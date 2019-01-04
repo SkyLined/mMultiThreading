@@ -13,5 +13,5 @@
   "sProductAuthor": "SkyLined", 
   "sProductName": "mMultiThreading", 
   "sProductURL": "https://github.com/SkyLined/mMultiThreading", 
-  "sTrialPeriodDuration": "1m"
+  "oTrialPeriodDuration": "1m"
 }
