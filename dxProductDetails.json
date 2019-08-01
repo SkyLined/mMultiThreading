@@ -2,7 +2,7 @@
   "asDependentOnProductNames": [
     "mDebugOutput"
   ], 
-  "oProductVersion": "2019-01-04 17:52", 
+  "oProductVersion": "2019-08-01 15:13", 
   "oRepository": {
     "sBranch": "master", 
     "sRepositoryName": "mMultiThreading", 
