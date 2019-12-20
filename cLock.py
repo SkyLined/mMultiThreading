@@ -93,7 +93,7 @@ class cLock(cWithDebugOutput):
         oSelf.__oQueue.put(0, True, float(nTimeoutInSeconds));
       except Queue.Full:
         return oSelf.fxExitFunctionOutput(False);
-        oSelf.__oQueue.get(False, 0);
+      oSelf.__oQueue.get(False, 0);
       return oSelf.fxExitFunctionOutput(True);
     except Exception as oException:
       oSelf.fxRaiseExceptionOutput(oException);
