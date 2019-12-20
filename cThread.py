@@ -1,4 +1,4 @@
-import threading, traceback;
+import threading;
 from mDebugOutput import cWithDebugOutput, fsToString;
 from .cLock import cLock;
 
