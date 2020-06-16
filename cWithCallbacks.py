@@ -1,53 +1,73 @@
+from mDebugOutput import ShowDebugOutput, fShowDebugOutput;
+
 gbDebugOutput = False;
 gbFireDebugOutput = False;
 
 class cWithCallbacks(object):
+  def fasGetEventNames(oSelf):
+    return getattr(oSelf, "_cWithCallbacks__dafCallbacks_by_sEventName", {}).keys();
+    
   def fAddEvents(oSelf, *asEventNames):
-    if gbDebugOutput and hasattr(oSelf, "fEnterFunctionOutput"):
-      oSelf.fEnterFunctionOutput(asEventNames = asEventNames);
     # Might be called multiple times by sub-classes.
     if not hasattr(oSelf, "_cWithCallbacks__dafCallbacks_by_sEventName"):
       oSelf.__dafCallbacks_by_sEventName = {};
+      oSelf.__dafFireOnceCallbacks_by_sEventName = {};
     for sEventName in asEventNames:
       assert sEventName not in oSelf.__dafCallbacks_by_sEventName, \
           "The event %s appears to be defined twice" % repr(sEventName);
       oSelf.__dafCallbacks_by_sEventName[sEventName] = [];
-    if gbDebugOutput and hasattr(oSelf, "fStatusOutput"):
-      oSelf.fStatusOutput("known events: %s" % ", ".join([repr(sEventName) for sEventName in oSelf.__dafCallbacks_by_sEventName.keys()]));
-    if gbDebugOutput and hasattr(oSelf, "fxExitFunctionOutput"):
-      oSelf.fExitFunctionOutput();
+      oSelf.__dafFireOnceCallbacks_by_sEventName[sEventName] = [];
+    fShowDebugOutput("new events: %s" % ", ".join(asEventNames));
   
-  def fAddCallback(oSelf, sEventName, fCallback):
-    if gbDebugOutput and hasattr(oSelf, "fEnterFunctionOutput"):
-      oSelf.fEnterFunctionOutput(sEventName = sEventName, fCallback = fCallback);
+  def fAddCallback(oSelf, sEventName, fCallback, bFireOnce = False):
     assert sEventName in oSelf.__dafCallbacks_by_sEventName, \
-        "Unknown event name %s" % repr(sEventName);
-    oSelf.__dafCallbacks_by_sEventName[sEventName].append(fCallback);
-    if gbDebugOutput and hasattr(oSelf, "fxExitFunctionOutput"):
-      oSelf.fExitFunctionOutput();
+        "event %s not in list of known events (%s)" % (
+          repr(sEventName),
+          ", ".join([repr(sEventName) for sEventName in oSelf.__dafCallbacks_by_sEventName.keys()])
+        );
+    dafCallbacks_by_sEventName = oSelf.__dafFireOnceCallbacks_by_sEventName if bFireOnce else oSelf.__dafCallbacks_by_sEventName;
+    dafCallbacks_by_sEventName[sEventName].append(fCallback);
+    fShowDebugOutput("New callback for %s: %s%s" % (sEventName, repr(fCallback), " (fire once)" if bFireOnce else ""));
   
   def fbRemoveCallback(oSelf, sEventName, fCallback):
-    if gbDebugOutput and hasattr(oSelf, "fEnterFunctionOutput"):
-      oSelf.fEnterFunctionOutput(sEventName = sEventName, fCallback = fCallback);
     assert sEventName in oSelf.__dafCallbacks_by_sEventName, \
-        "Unknown event name %s" % repr(sEventName);
-    if fCallback in oSelf.__dafCallbacks_by_sEventName[sEventName]:
-      oSelf.__dafCallbacks_by_sEventName[sEventName].remove(fCallback);
-      bResult = True;
+        "event %s not in list of known events (%s)" % (
+          repr(sEventName),
+          ", ".join([repr(sEventName) for sEventName in oSelf.__dafCallbacks_by_sEventName.keys()])
+        );
+    if fCallback in oSelf.__dafCallbacks_by_sEventName:
+      oSelf.__dafCallbacks_by_sEventName.remove(fCallback);
+      fShowDebugOutput("Regular callback for %s removed: %s" % (sEventName, repr(fCallback)));
+      return True;
+    if fCallback in oSelf.__dafFireOnceCallbacks_by_sEventName:
+      oSelf.__dafFireOnceCallbacks_by_sEventName.remove(fCallback);
+      fShowDebugOutput("Fire-once callback for %s removed: %s" % (sEventName, repr(fCallback)));
+      return True;
+    fShowDebugOutput("Callback not found");
+    return False;
+  
+  def fFireCallbacks(oSelf, sEventName, *txArguments, **dxArguments):
+    assert sEventName in oSelf.__dafCallbacks_by_sEventName, \
+        "event %s not in list of known events (%s)" % (
+          repr(sEventName),
+          ", ".join([repr(sEventName) for sEventName in oSelf.__dafCallbacks_by_sEventName.keys()])
+        );
+    atfFireOnceCallbacks = oSelf.__dafFireOnceCallbacks_by_sEventName[sEventName];
+    atfCallbacks = oSelf.__dafCallbacks_by_sEventName[sEventName] + atfFireOnceCallbacks;
+    if atfCallbacks:
+      fShowDebugOutput("Firing %s event for %d callbacks." % (sEventName, len(atfCallbacks)));
+      if txArguments or dxArguments:
+        asArguments = (
+          [repr(xArgument) for xArgument in txArguments] +
+          ["%s:%s" % (repr(xKey), repr(xValue)) for (xKey, xValue) in dxArguments.items()]
+        );
+        fShowDebugOutput("  Arguments: %s." % ", ".join(asArguments));
+      for fCallback in atfCallbacks:
+        bFireOnce = fCallback in atfFireOnceCallbacks;
+        fShowDebugOutput("  -> %s%s" % (repr(fCallback), " (fire once)" if bFireOnce else ""));
+        fCallback(oSelf, *txArguments, **dxArguments);
+        if bFireOnce:
+          atfFireOnceCallbacks.remove(fCallback);
     else:
-      bResult = False;
-    if gbDebugOutput and hasattr(oSelf, "fxExitFunctionOutput"):
-      return oSelf.fxExitFunctionOutput(bResult);
-    return bResult;
-  
-  def fFireCallbacks(oSelf, sEventName, *axArguments, **dxArguments):
-    if (gbDebugOutput or gbFireDebugOutput) and hasattr(oSelf, "fEnterFunctionOutput"):
-      oSelf.fEnterFunctionOutput(sEventName = sEventName, axArguments = axArguments, dxArguments = dxArguments);
-    assert sEventName in oSelf.__dafCallbacks_by_sEventName, \
-        "event %s not in list of known events (%s)" % (repr(sEventName), ", ".join([repr(sEventName) for sEventName in oSelf.__dafCallbacks_by_sEventName.keys()]));
-    afCallbacks = oSelf.__dafCallbacks_by_sEventName[sEventName];
-    for fCallback in afCallbacks:
-      fCallback(oSelf, *axArguments, **dxArguments);
-    if (gbDebugOutput or gbFireDebugOutput) and hasattr(oSelf, "fxExitFunctionOutput"):
-      oSelf.fExitFunctionOutput("Fired %d callbacks" % len(afCallbacks));
-  
+      fShowDebugOutput("Fired %s event without callbacks." % sEventName);
+      
