@@ -114,12 +114,11 @@ class cThread(object):
         oException,
         aasAdditionalConsoleOutputLines = [
           [
-            mColors.guStackHeaderColor, "This thread was created in thread ",
-            mColors.guStackHeaderHighlightColor, "%d/0x%X" % (oSelf.__oCreateCallStack.uThreadId, oSelf.__oCreateCallStack.uThreadId),
-            mColors.guStackHeaderColor, " (",
-            mColors.guStackHeaderHighlightColor, oSelf.__oCreateCallStack.sThreadName or "<unnamed>",
-            mColors.guStackHeaderColor, ")",
-            mColors.guStackHeaderColor, " with the following stack:",
+            0x0F07, "This thread was created in thread ",
+            0x0F0F, "%d/0x%X" % (oSelf.__oCreateCallStack.uThreadId, oSelf.__oCreateCallStack.uThreadId),
+            0x0F07, " (",
+            0x0F0F, oSelf.__oCreateCallStack.sThreadName or "<unnamed>",
+            0x0F07, ") with the following stack:",
           ],
         ] + oSelf.__oCreateCallStack.faasCreateConsoleOutput(bAddHeader = False)
       );
