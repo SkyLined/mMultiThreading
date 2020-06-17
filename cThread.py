@@ -1,6 +1,15 @@
 import threading;
-from mDebugOutput import cCallStack, ShowDebugOutput, fShowDebugOutput, fTerminateWithException;
-from mDebugOutput.mColors import *;
+
+try: # mDebugOutput use is Optional
+  from mDebugOutput import *;
+except: # Do nothing if not available.
+  ShowDebugOutput = lambda fxFunction: fxFunction;
+  fShowDebugOutput = lambda sMessage: None;
+  fEnableDebugOutputForModule = lambda mModule: None;
+  fEnableDebugOutputForClass = lambda cClass: None;
+  fEnableAllDebugOutput = lambda: None;
+  cCallStack = fTerminateWithException = fTerminateWithConsoleOutput = None;
+
 from .cLock import cLock;
 
 goThreadCounterLock = threading.Lock();
@@ -25,7 +34,7 @@ class cThread(object):
   @ShowDebugOutput
   def __init__(oSelf, fMain, *txArguments, **dxArguments):
     oSelf.__fMain = fMain;
-    oSelf.__oCreateCallStack = cCallStack.foFromThisFunctionsCaller();
+    oSelf.__oCreateCallStack = cCallStack.foFromThisFunctionsCaller() if cCallStack else None;
     oSelf.__txArguments = txArguments;
     oSelf.__dxArguments = dxArguments;
     oSelf.__bVital = True;
@@ -99,13 +108,18 @@ class cThread(object):
     try:
       oSelf.__fMain(*oSelf.__txArguments, **oSelf.__dxArguments);
     except Exception as oException:
+      if not fTerminateWithException:
+        raise;
       fTerminateWithException(
         oException,
         aasAdditionalConsoleOutputLines = [
           [
-            guStackHeaderColor, "This thread was created in thread ", guStackHeaderHighlightColor, "%d/0x%X" % (oSelf.__oCreateCallStack.uThreadId, oSelf.__oCreateCallStack.uThreadId),
-            guStackHeaderColor, " (", guStackHeaderHighlightColor, oSelf.__oCreateCallStack.sThreadName or "<unnamed>", guStackHeaderColor, ")",
-            guStackHeaderColor, " with the following stack:",
+            mColors.guStackHeaderColor, "This thread was created in thread ",
+            mColors.guStackHeaderHighlightColor, "%d/0x%X" % (oSelf.__oCreateCallStack.uThreadId, oSelf.__oCreateCallStack.uThreadId),
+            mColors.guStackHeaderColor, " (",
+            mColors.guStackHeaderHighlightColor, oSelf.__oCreateCallStack.sThreadName or "<unnamed>",
+            mColors.guStackHeaderColor, ")",
+            mColors.guStackHeaderColor, " with the following stack:",
           ],
         ] + oSelf.__oCreateCallStack.faasCreateConsoleOutput(bAddHeader = False)
       );

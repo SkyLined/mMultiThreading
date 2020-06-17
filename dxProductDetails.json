@@ -1,5 +1,4 @@
 {
-  "asDependentOnProductNames": [], 
   "asOptionalProductNames": [
     "mDebugOutput",
     "oConsole"
