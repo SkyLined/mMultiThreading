@@ -1,7 +1,9 @@
 {
-  "asDependentOnProductNames": [
-    "mDebugOutput"
-  ], 
+  "asDependentOnProductNames": [], 
+  "asOptionalProductNames": [
+    "mDebugOutput",
+    "oConsole"
+  ],
   "oProductVersion": "2020-06-17 07:21", 
   "oRepository": {
     "sBranch": "master", 
@@ -9,8 +11,6 @@
     "sType": "GitHub", 
     "sUserName": "SkyLined"
   }, 
-  "oTrialPeriodDuration": null, 
-  "sLicenseServerURL": null, 
   "sProductAuthor": "SkyLined", 
   "sProductName": "mMultiThreading", 
   "sProductURL": "https://github.com/SkyLined/mMultiThreading"
