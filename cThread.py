@@ -91,12 +91,13 @@ class cThread(object):
   
   @ShowDebugOutput
   def fWait(oSelf):
-    oSelf.__oPythonThread.join();
-    return not oSelf.__oPythonThread.isAlive();
+    if oSelf.__oPythonThread.isAlive():
+      oSelf.__oPythonThread.join();
   
   @ShowDebugOutput
   def fbWait(oSelf, nzTimeoutInSeconds):
-    oSelf.__oPythonThread.join(nzTimeoutInSeconds);
+    if oSelf.__oPythonThread.isAlive():
+      oSelf.__oPythonThread.join(nzTimeoutInSeconds);
     return not oSelf.__oPythonThread.isAlive();
   
   @ShowDebugOutput
