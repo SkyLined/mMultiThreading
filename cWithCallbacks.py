@@ -54,7 +54,10 @@ class cWithCallbacks(object):
     fShowDebugOutput("Callback not found");
     return False;
   
-  def fFireCallbacks(oSelf, sEventName, *txArguments, **dxArguments):
+  def fRemoveCallback(oSelf, sEventName, fCallback):
+    oSelf.fbRemoveCallback(sEventName, fCallback)
+  
+  def fbFireCallbacks(oSelf, sEventName, *txArguments, **dxArguments):
     assert sEventName in oSelf.__dafCallbacks_by_sEventName, \
         "event %s not in list of known events (%s)" % (
           repr(sEventName),
@@ -62,20 +65,24 @@ class cWithCallbacks(object):
         );
     atfFireOnceCallbacks = oSelf.__dafFireOnceCallbacks_by_sEventName[sEventName];
     atfCallbacks = oSelf.__dafCallbacks_by_sEventName[sEventName] + atfFireOnceCallbacks;
-    if atfCallbacks:
-      fShowDebugOutput("Firing %s event for %d callbacks." % (sEventName, len(atfCallbacks)));
-      if txArguments or dxArguments:
-        asArguments = (
-          [repr(xArgument) for xArgument in txArguments] +
-          ["%s:%s" % (repr(xKey), repr(xValue)) for (xKey, xValue) in dxArguments.items()]
-        );
-        fShowDebugOutput("  Arguments: %s." % ", ".join(asArguments));
-      for fCallback in atfCallbacks:
-        bFireOnce = fCallback in atfFireOnceCallbacks;
-        fShowDebugOutput("  -> %s%s" % (repr(fCallback), " (fire once)" if bFireOnce else ""));
-        fCallback(oSelf, *txArguments, **dxArguments);
-        if bFireOnce:
-          atfFireOnceCallbacks.remove(fCallback);
-    else:
+    if not atfCallbacks:
       fShowDebugOutput("Fired %s event without callbacks." % sEventName);
-      
+      return False;
+    fShowDebugOutput("Firing %s event for %d callbacks." % (sEventName, len(atfCallbacks)));
+    if txArguments or dxArguments:
+      asArguments = (
+        [repr(xArgument) for xArgument in txArguments] +
+        ["%s:%s" % (repr(xKey), repr(xValue)) for (xKey, xValue) in dxArguments.items()]
+      );
+      fShowDebugOutput("  Arguments: %s." % ", ".join(asArguments));
+    for fCallback in atfCallbacks:
+      bFireOnce = fCallback in atfFireOnceCallbacks;
+      fShowDebugOutput("  -> %s%s" % (repr(fCallback), " (fire once)" if bFireOnce else ""));
+      fCallback(oSelf, *txArguments, **dxArguments);
+      if bFireOnce:
+        atfFireOnceCallbacks.remove(fCallback);
+    return True;
+
+  def fFireCallbacks(oSelf, sEventName, *txArguments, **dxArguments):
+    oSelf.fbFireCallbacks(sEventName, *txArguments, **dxArguments);
+
