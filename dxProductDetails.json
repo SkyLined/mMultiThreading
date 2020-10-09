@@ -1,6 +1,7 @@
 {
   "asDependentOnProductNames": [], 
   "asOptionalProductNames": [
+    "cFileSystemItem",
     "mDebugOutput", 
     "mWindowsSDK", 
     "oConsole"
