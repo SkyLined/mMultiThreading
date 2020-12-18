@@ -23,30 +23,31 @@ guErrorHighlightColor = 0x0F07;
 class cLock(cWithCallbacks):
   @classmethod
   @ShowDebugOutput
-  def faoWaitUntilLocksAreUnlocked(oSelf, aoLocks, nzTimeoutInSeconds):
-    oAtLeastOneLockIsUnLockedLock = cLock("faoWaitUntilLocksAreUnlockedLock", bLocked = True);
-    def fReleaseAtLeastOneLockIsUnLockedLock():
-      oAtLeastOneLockIsUnLockedLock.fbRelease();
+  def faoWaitUntilLocksAreUnlocked(oSelf, aoLocks, n0TimeoutInSeconds = None):
+    oAtLeastOneLockIsUnlockedLock = cLock("faoWaitUntilLocksAreUnlockedLock", bLocked = True);
+    def fHandleUnlock(oLock):
+      oAtLeastOneLockIsUnlockedLock.fbRelease();
     for oLock in aoLocks:
-      oLock.fAddCallback("unlocked", lambda oLock: fReleaseAtLeastOneLockIsUnLockedLock());
       if not oLock.bLocked:
-        fReleaseAtLeastOneLockIsUnLockedLock();
-    oAtLeastOneLockIsUnLockedLock.fbWait(nzTimeoutInSeconds);
+        oAtLeastOneLockIsUnlockedLock.fbRelease();
+      else:
+        oLock.fAddCallback("unlocked", fHandleUnlock);
+    oAtLeastOneLockIsUnlockedLock.fbWait(n0TimeoutInSeconds);
     return [
       oLock
       for oLock in aoLocks
       if not oLock.bLocked
     ];
     
-  def __init__(oSelf, szDescription = None, uSize = 1, bLocked = False, nzDeadlockTimeoutInSeconds = None):
-    oSelf.__sDescription = szDescription or str(id(oSelf));
+  def __init__(oSelf, s0Description = None, uSize = 1, bLocked = False, n0DeadlockTimeoutInSeconds = None):
+    oSelf.__sDescription = s0Description or str(id(oSelf));
     oSelf.__uSize = uSize;
     oSelf.__oQueue = Queue.Queue(uSize);
     oSelf.__oQueuePutLock = Queue.Queue(1);
-    if nzDeadlockTimeoutInSeconds is not None:
-      assert isinstance(nzDeadlockTimeoutInSeconds, (int, long, float)) and nzDeadlockTimeoutInSeconds >=0, \
+    if n0DeadlockTimeoutInSeconds is not None:
+      assert isinstance(n0DeadlockTimeoutInSeconds, (int, long, float)) and n0DeadlockTimeoutInSeconds >=0, \
           "Invalid timeout value %s" % repr(nTimeoutInSeconds);
-    oSelf.__nzDeadlockTimeoutInSeconds = nzDeadlockTimeoutInSeconds;
+    oSelf.__n0DeadlockTimeoutInSeconds = n0DeadlockTimeoutInSeconds;
     oSelf.fAddEvents("locked", "unlocked");
     if bLocked:
       oSelf.__xLastAcquireCallStackOrThreadId = cCallStack.foFromThisFunctionsCaller() if cCallStack else threading.current_thread().ident;
@@ -71,10 +72,10 @@ class cLock(cWithCallbacks):
   
   @ShowDebugOutput
   def fAcquire(oSelf):
-    assert oSelf.__nzDeadlockTimeoutInSeconds is not None, \
+    assert oSelf.__n0DeadlockTimeoutInSeconds is not None, \
         "Cannot acquire a lock without a timeout if no deadlock timeout is provided."
     xCallStackOrThreadId = cCallStack.foFromThisFunctionsCaller() if cCallStack else threading.current_thread().ident;
-    if not oSelf.__fbAcquire(xCallStackOrThreadId, oSelf.__nzDeadlockTimeoutInSeconds):
+    if not oSelf.__fbAcquire(xCallStackOrThreadId, oSelf.__n0DeadlockTimeoutInSeconds):
       xLastAcquireCallStackOrThreadId = oSelf.__xLastAcquireCallStackOrThreadId;
       if (
         xLastAcquireCallStackOrThreadId is not None and (
@@ -150,7 +151,7 @@ class cLock(cWithCallbacks):
       [
         [
           guErrorHighlightColor, "Cannot acquire lock within ", guErrorHighlightColor,
-          "%f" % oSelf.__nzDeadlockTimeoutInSeconds, guErrorNormalColor, " seconds!",
+          "%f" % oSelf.__n0DeadlockTimeoutInSeconds, guErrorNormalColor, " seconds!",
         ],
         [
           guErrorNormalColor, "Lock: ", guErrorHighlightColor, str(oSelf),
