@@ -19,7 +19,6 @@ Queue
 shutil
 string
 strop
-struct
 subprocess
 thread
 threading
