@@ -1,4 +1,6 @@
 {
+  "asProductTypes": ["Python module"],
+  "sPythonModuleName": "mMultiThreading",
   "asDependentOnProductNames": [], 
   "asOptionalProductNames": [
     "cFileSystemItem",
