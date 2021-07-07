@@ -1,19 +1,16 @@
 try: # mDebugOutput use is Optional
-  from mDebugOutput import *;
-except: # Do nothing if not available.
-  ShowDebugOutput = lambda fxFunction: fxFunction;
-  fShowDebugOutput = lambda sMessage: None;
-  fEnableDebugOutputForModule = lambda mModule: None;
-  fEnableDebugOutputForClass = lambda cClass: None;
-  fEnableAllDebugOutput = lambda: None;
-  cCallStack = fTerminateWithException = fTerminateWithConsoleOutput = None;
+  from mDebugOutput import ShowDebugOutput, fShowDebugOutput;
+except ModuleNotFoundError as oException:
+  if oException.args[0] != "No module named 'mDebugOutput'":
+    raise;
+  ShowDebugOutput = fShowDebugOutput = lambda x: x; # NOP
 
 gbDebugOutput = False;
 gbFireDebugOutput = False;
 
 class cWithCallbacks(object):
   def fasGetEventNames(oSelf):
-    return getattr(oSelf, "_cWithCallbacks__dafCallbacks_by_sEventName", {}).keys();
+    return list(getattr(oSelf, "_cWithCallbacks__dafCallbacks_by_sEventName", {}).keys());
     
   def fAddEvents(oSelf, *asEventNames):
     # Might be called multiple times by sub-classes.

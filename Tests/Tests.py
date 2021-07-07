@@ -1,13 +1,16 @@
 from fTestDependencies import fTestDependencies;
 fTestDependencies();
 
-try:
-  import mDebugOutput;
-except:
-  mDebugOutput = None;
+try: # mDebugOutput use is Optional
+  import mDebugOutput as m0DebugOutput;
+except ModuleNotFoundError as oException:
+  if oException.args[0] != "No module named 'mDebugOutput'":
+    raise;
+  m0DebugOutput = None;
+
 try:
   try:
-    from oConsole import oConsole;
+    from mConsole import oConsole;
   except:
     import sys, threading;
     oConsoleLock = threading.Lock();
@@ -16,13 +19,13 @@ try:
       def fOutput(*txArguments, **dxArguments):
         sOutput = "";
         for x in txArguments:
-          if isinstance(x, (str, unicode)):
+          if isinstance(x, str):
             sOutput += x;
         sPadding = dxArguments.get("sPadding");
         if sPadding:
           sOutput.ljust(120, sPadding);
         oConsoleLock.acquire();
-        print sOutput;
+        print(sOutput);
         sys.stdout.flush();
         oConsoleLock.release();
       fPrint = fOutput;
@@ -34,6 +37,6 @@ try:
   pass;
   
 except Exception as oException:
-  if mDebugOutput:
-    mDebugOutput.fTerminateWithException(oException, bShowStacksForAllThread = True);
+  if m0DebugOutput:
+    m0DebugOutput.fTerminateWithException(oException, bShowStacksForAllThread = True);
   raise;

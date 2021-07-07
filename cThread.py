@@ -1,14 +1,12 @@
 import threading;
 
 try: # mDebugOutput use is Optional
-  from mDebugOutput import *;
-except: # Do nothing if not available.
-  ShowDebugOutput = lambda fxFunction: fxFunction;
-  fShowDebugOutput = lambda sMessage: None;
-  fEnableDebugOutputForModule = lambda mModule: None;
-  fEnableDebugOutputForClass = lambda cClass: None;
-  fEnableAllDebugOutput = lambda: None;
-  cCallStack = fTerminateWithException = fTerminateWithConsoleOutput = None;
+  from mDebugOutput import ShowDebugOutput, fShowDebugOutput, cCallStack as c0CallStack, fTerminateWithException as f0TerminateWithException;
+except ModuleNotFoundError as oException:
+  if oException.args[0] != "No module named 'mDebugOutput'":
+    raise;
+  ShowDebugOutput = fShowDebugOutput = lambda x: x; # NOP
+  c0CallStack = f0TerminateWithException = None;
 
 from .cLock import cLock;
 
@@ -34,7 +32,7 @@ class cThread(object):
   @ShowDebugOutput
   def __init__(oSelf, fMain, *txArguments, **dxArguments):
     oSelf.__fMain = fMain;
-    oSelf.__oCreateCallStack = cCallStack.foFromThisFunctionsCaller() if cCallStack else None;
+    oSelf.__oCreateCallStack = c0CallStack.foForThisFunctionsCaller() if c0CallStack else None;
     oSelf.__txArguments = txArguments;
     oSelf.__dxArguments = dxArguments;
     oSelf.__bVital = True;
@@ -91,14 +89,14 @@ class cThread(object):
   
   @ShowDebugOutput
   def fWait(oSelf):
-    if oSelf.__oPythonThread.isAlive():
+    if oSelf.__oPythonThread.is_alive():
       oSelf.__oPythonThread.join();
   
   @ShowDebugOutput
   def fbWait(oSelf, n0TimeoutInSeconds):
-    if oSelf.__oPythonThread.isAlive():
+    if oSelf.__oPythonThread.is_alive():
       oSelf.__oPythonThread.join(n0TimeoutInSeconds);
-    return not oSelf.__oPythonThread.isAlive();
+    return not oSelf.__oPythonThread.is_alive();
   
   @ShowDebugOutput
   def __fMainWrapper(oSelf):
@@ -109,20 +107,20 @@ class cThread(object):
     try:
       oSelf.__fMain(*oSelf.__txArguments, **oSelf.__dxArguments);
     except Exception as oException:
-      if not fTerminateWithException:
-        raise;
-      fTerminateWithException(
-        oException,
-        aasAdditionalConsoleOutputLines = [
-          [
-            0x0F07, "This thread was created in thread ",
-            0x0F0F, "%d/0x%X" % (oSelf.__oCreateCallStack.uThreadId, oSelf.__oCreateCallStack.uThreadId),
-            0x0F07, " (",
-            0x0F0F, oSelf.__oCreateCallStack.sThreadName or "<unnamed>",
-            0x0F07, ") with the following stack:",
-          ],
-        ] + oSelf.__oCreateCallStack.faasCreateConsoleOutput(bAddHeader = False)
-      );
+      if f0TerminateWithException:
+        f0TerminateWithException(
+          oException,
+          a0asAdditionalConsoleOutputLines = [
+            [
+              0x0F07, "This thread was created in thread ",
+              0x0F0F, "%d/0x%X" % (oSelf.__oCreateCallStack.uThreadId, oSelf.__oCreateCallStack.uThreadId),
+              0x0F07, " (",
+              0x0F0F, oSelf.__oCreateCallStack.sThreadName or "<unnamed>",
+              0x0F07, ") with the following stack:",
+            ],
+          ] + oSelf.__oCreateCallStack.faasCreateConsoleOutput(bAddHeader = False)
+        );
+      raise;
     oSelf.__bRunning = False;
     oSelf.__bTerminated = True;
     del cThread.__oThread_by_uId[oSelf.__uId];

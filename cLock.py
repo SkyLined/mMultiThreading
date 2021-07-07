@@ -1,16 +1,14 @@
-import os, Queue, threading, time, threading, traceback;
+import os, queue, threading, time, threading, traceback;
 
 try: # mDebugOutput use is Optional
-  from mDebugOutput import *;
-except: # Do nothing if not available.
-  ShowDebugOutput = lambda fxFunction: fxFunction;
-  fShowDebugOutput = lambda sMessage: None;
-  fEnableDebugOutputForModule = lambda mModule: None;
-  fEnableDebugOutputForClass = lambda cClass: None;
-  fEnableAllDebugOutput = lambda: None;
-  cCallStack = fTerminateWithException = fTerminateWithConsoleOutput = None;
+  from mDebugOutput import ShowDebugOutput, fShowDebugOutput, cCallStack as c0CallStack;
+except ModuleNotFoundError as oException:
+  if oException.args[0] != "No module named 'mDebugOutput'":
+    raise;
+  ShowDebugOutput = fShowDebugOutput = lambda x: x; # NOP
+  c0CallStack = None;
 
-from cWithCallbacks import cWithCallbacks;
+from .cWithCallbacks import cWithCallbacks;
 
 def fsGetCallersCaller(uThreadId):
   uThreadId = threading.currentThread().ident;
@@ -42,16 +40,16 @@ class cLock(cWithCallbacks):
   def __init__(oSelf, s0Description = None, uSize = 1, bLocked = False, n0DeadlockTimeoutInSeconds = None):
     oSelf.__sDescription = s0Description or str(id(oSelf));
     oSelf.__uSize = uSize;
-    oSelf.__oQueue = Queue.Queue(uSize);
-    oSelf.__oQueuePutLock = Queue.Queue(1);
+    oSelf.__oQueue = queue.Queue(uSize);
+    oSelf.__oQueuePutLock = queue.Queue(1);
     if n0DeadlockTimeoutInSeconds is not None:
-      assert isinstance(n0DeadlockTimeoutInSeconds, (int, long, float)) and n0DeadlockTimeoutInSeconds >=0, \
+      assert isinstance(n0DeadlockTimeoutInSeconds, (int, float)) and n0DeadlockTimeoutInSeconds >=0, \
           "Invalid timeout value %s" % repr(nTimeoutInSeconds);
     oSelf.__n0DeadlockTimeoutInSeconds = n0DeadlockTimeoutInSeconds;
     oSelf.fAddEvents("locked", "unlocked");
     if bLocked:
-      oSelf.__xLastAcquireCallStackOrThreadId = cCallStack.foFromThisFunctionsCaller() if cCallStack else threading.current_thread().ident;
-      for u in xrange(uSize):
+      oSelf.__xLastAcquireCallStackOrThreadId = c0CallStack.foForThisFunctionsCaller() if c0CallStack else threading.current_thread().ident;
+      for u in range(uSize):
         oSelf.__oQueue.put(oSelf.__xLastAcquireCallStackOrThreadId);
     else:
       oSelf.__xLastAcquireCallStackOrThreadId = None;
@@ -64,7 +62,7 @@ class cLock(cWithCallbacks):
   def sLockedBy(oSelf):
     if oSelf.__oQueue.full():
       xStackOrThreadId = oSelf.__xLastAcquireCallStackOrThreadId;
-      if cCallStack:
+      if c0CallStack:
         return "%s in thread %d/0x%X" % (xStackOrThreadId.oTopFrame.sCallDescription, xStackOrThreadId.uThreadId, xStackOrThreadId.uThreadId);
       else:
         return "thread %d/0x%X" % (xStackOrThreadId, xStackOrThreadId);
@@ -74,12 +72,12 @@ class cLock(cWithCallbacks):
   def fAcquire(oSelf):
     assert oSelf.__n0DeadlockTimeoutInSeconds is not None, \
         "Cannot acquire a lock without a timeout if no deadlock timeout is provided."
-    xCallStackOrThreadId = cCallStack.foFromThisFunctionsCaller() if cCallStack else threading.current_thread().ident;
+    xCallStackOrThreadId = c0CallStack.foForThisFunctionsCaller() if c0CallStack else threading.current_thread().ident;
     if not oSelf.__fbAcquire(xCallStackOrThreadId, oSelf.__n0DeadlockTimeoutInSeconds):
       xLastAcquireCallStackOrThreadId = oSelf.__xLastAcquireCallStackOrThreadId;
       if (
         xLastAcquireCallStackOrThreadId is not None and (
-          xLastAcquireCallStackOrThreadId.uThreadId == xCallStackOrThreadId.uThreadId if cCallStack
+          xLastAcquireCallStackOrThreadId.uThreadId == xCallStackOrThreadId.uThreadId if c0CallStack
           else xLastAcquireCallStackOrThreadId == xCallStackOrThreadId
         )
       ):
@@ -88,12 +86,12 @@ class cLock(cWithCallbacks):
   
   @ShowDebugOutput
   def fbAcquire(oSelf, nTimeoutInSeconds = 0):
-    xCallStackOrThreadId = cCallStack.foFromThisFunctionsCaller() if cCallStack else threading.current_thread().ident;
+    xCallStackOrThreadId = c0CallStack.foForThisFunctionsCaller() if c0CallStack else threading.current_thread().ident;
     return oSelf.__fbAcquire(xCallStackOrThreadId, nTimeoutInSeconds);
   
   def __fbAcquire(oSelf, xCallStackOrThreadId, nTimeoutInSeconds):
     if nTimeoutInSeconds is not None:
-      assert isinstance(nTimeoutInSeconds, (int, long, float)) and nTimeoutInSeconds >=0, \
+      assert isinstance(nTimeoutInSeconds, (int, float)) and nTimeoutInSeconds >=0, \
           "Invalid timeout value %s" % repr(nTimeoutInSeconds);
       fShowDebugOutput("Attempting to lock %s for up to %f seconds..." % (oSelf, nTimeoutInSeconds));
     else:
@@ -105,7 +103,7 @@ class cLock(cWithCallbacks):
         nRemainingTimeoutInSeconds = max(0, nEndTime - time.time());
         try:
           oSelf.__oQueue.put(oSelf.__xLastAcquireCallStackOrThreadId, nRemainingTimeoutInSeconds > 0, nRemainingTimeoutInSeconds);
-        except Queue.Full:
+        except queue.Full:
           if nTimeoutInSeconds > 0:
             fShowDebugOutput("Not acquired becuase waiting for locked to become unlocked timed out.");
           else:
@@ -117,7 +115,7 @@ class cLock(cWithCallbacks):
         return True;
       finally:
         oSelf.__oQueuePutLock.get(False, 0);
-    except Queue.Full:
+    except queue.Full:
       fShowDebugOutput("Not acquired because busy.");
       return False;
   
@@ -162,7 +160,7 @@ class cLock(cWithCallbacks):
           guErrorNormalColor, " (",
           guErrorHighlightColor, oSelf.__xLastAcquireCallStackOrThreadId.sThreadName or "<unnamed>",
           guErrorNormalColor, ")!",
-        ] if cCallStack else [
+        ] if c0CallStack else [
           guErrorNormalColor, "Currently locked by thread: ",
           guErrorHighlightColor, "%d/0x%X" % (oSelf.__xLastAcquireCallStackOrThreadId, oSelf.__xLastAcquireCallStackOrThreadId),
           guErrorNormalColor, "!",
@@ -173,7 +171,7 @@ class cLock(cWithCallbacks):
           guErrorNormalColor, " (",
           guErrorHighlightColor, xCallStackOrThreadId.sThreadName or "<unnamed>",
           guErrorNormalColor, ")!",
-        ] if cCallStack else [
+        ] if c0CallStack else [
           guErrorNormalColor, "Attempted to be locked by thread: ",
           guErrorHighlightColor, "%d/0x%X" % (xCallStackOrThreadId, xCallStackOrThreadId),
           guErrorNormalColor, "!",
@@ -187,7 +185,7 @@ class cLock(cWithCallbacks):
           [sMessage] + [
             "".join([
               sConsoleOutput for sConsoleOutput in asConsoleOutputLine
-              if isinstance(sConsoleOutput, (str, unicode))
+              if isinstance(sConsoleOutput, str)
             ])
             for asConsoleOutputLine in aasConsoleOutputLines
           ]
@@ -206,7 +204,7 @@ class cLock(cWithCallbacks):
             guErrorNormalColor, "Stack when the thread attempted to acquired the lock a second time:",
           ]
         ] + xCallStackOrThreadId.faasCreateConsoleOutput(bAddHeader = False)
-      ) if cCallStack else []
+      ) if c0CallStack else []
     );
   
   @ShowDebugOutput
@@ -214,7 +212,7 @@ class cLock(cWithCallbacks):
     fShowDebugOutput("Unlocking %s..." % oSelf);
     try:
       oSelf.__xLastAcquireCallStackOrThreadId = oSelf.__oQueue.get(False, 0);
-    except Queue.Empty:
+    except queue.Empty:
       raise AssertionError("Cannot release lock %s because it is not locked!" % oSelf);
     oSelf.fFireCallbacks("unlocked");
 
@@ -223,7 +221,7 @@ class cLock(cWithCallbacks):
     fShowDebugOutput("Attempting to unlock %s if locked..." % oSelf);
     try:
       oSelf.__xLastAcquireCallStackOrThreadId = oSelf.__oQueue.get(False, 0);
-    except Queue.Empty:
+    except queue.Empty:
       fShowDebugOutput("Not locked");
       return False;
     fShowDebugOutput("Unlocked");
@@ -234,12 +232,12 @@ class cLock(cWithCallbacks):
   def fbIsLockedByCurrentThread(oSelf):
     xCallStackOrThreadId = oSelf.__xLastAcquireCallStackOrThreadId;
     return (
-      (xCallStackOrThreadId.uThreadId if cCallStack else xCallStackOrThreadId) == threading.currentThread().ident
+      (xCallStackOrThreadId.uThreadId if c0CallStack else xCallStackOrThreadId) == threading.currentThread().ident
     ) if xCallStackOrThreadId else False;
 
   @ShowDebugOutput
   def fbWait(oSelf, nTimeoutInSeconds):
-    assert isinstance(nTimeoutInSeconds, (int, long, float)) and nTimeoutInSeconds >= 0, \
+    assert isinstance(nTimeoutInSeconds, (int, float)) and nTimeoutInSeconds >= 0, \
         "Invalid timeout value %s" % repr(nTimeoutInSeconds);
     # Wait for the lock to be unlocked by trying to lock it with a timeout. If we locked it, unlock it again.
     # Returns True of the lock was unlocked during the call.
@@ -256,7 +254,7 @@ class cLock(cWithCallbacks):
         oSelf.__oQueue.get(False, 0);
       finally:
         oSelf.__oQueuePutLock.get(False, 0);
-    except Queue.Full:
+    except queue.Full:
       return False;
     return True;
   
@@ -281,7 +279,7 @@ class cLock(cWithCallbacks):
           xCallStackOrThreadId.oTopFrame.sCallDescription, xCallStackOrThreadId.oTopFrame.sLastExecutedCodeLocation,
           xCallStackOrThreadId.uThreadId, xCallStackOrThreadId.uThreadId
         )
-      ) if cCallStack else (
+      ) if c0CallStack else (
         "thread %d/0x%X" % (xCallStackOrThreadId, xCallStackOrThreadId)
       )
     ) if xCallStackOrThreadId else None;

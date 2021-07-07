@@ -1,28 +1,25 @@
 {
-  "asDependentOnProductNames": [], 
-  "asJavaScriptModuleNames": [], 
-  "asOptionalProductNames": [
-    "cFileSystemItem", 
-    "mDebugOutput", 
-    "mWindowsSDK", 
-    "oConsole"
-  ], 
-  "asPHPModuleNames": [], 
+  "a0sDebugAdditionalProductNames": [
+    "mFileSystemItem",
+    "mDebugOutput",
+    "mNotProvided",
+    "mWindowsSDK",
+    "mConsole"
+  ],
   "asProductTypes": [
     "Python module"
-  ], 
-  "asPythonApplicationNames": [], 
-  "oProductVersion": "2021-03-01 09:12", 
-  "oRepository": {
-    "sBranch": "master", 
-    "sRepositoryName": "mMultiThreading", 
-    "sType": "GitHub", 
-    "sUserName": "SkyLined"
-  }, 
-  "oTrialPeriodDuration": null, 
-  "sLicenseServerURL": null, 
-  "sProductAuthor": "SkyLined", 
-  "sProductName": "mMultiThreading", 
-  "sProductURL": "https://github.com/SkyLined/mMultiThreading", 
-  "sPythonModuleName": "mMultiThreading"
+  ],
+  "o0Repository": {
+    "sStructureVersion": "2021-07-02 11:16",
+    "sType": "GitHub",
+    "sbBranch": "master",
+    "sbRepositoryName": "mMultiThreading",
+    "sbUserName": "SkyLined"
+  },
+  "oProductVersion": "2021-07-07 12:48",
+  "s0PythonModuleName": "mMultiThreading",
+  "sProductAuthor": "SkyLined",
+  "sProductName": "mMultiThreading",
+  "sStructureVersion": "2021-07-02 11:16",
+  "sb0ProductURL": "https://github.com/SkyLined/mMultiThreading"
 }

@@ -1,1 +1,4 @@
-from .mMultiThreading import *;
+from .fInitializeProduct import fInitializeProduct;
+fInitializeProduct();
+
+from .mExports import *;
