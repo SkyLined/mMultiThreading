@@ -23,6 +23,7 @@ def fuCountNewThreadAndReturnIndex():
     goThreadCounterLock.release();
 
 class cThread(object):
+  uExitCodeInternalError = 1; # Default value, can be modified on the entire cThread class or specific instances.
   __oThread_by_uId = {};
   
   @staticmethod
@@ -110,6 +111,7 @@ class cThread(object):
       if f0TerminateWithException:
         f0TerminateWithException(
           oException,
+          oSelf.uExitCodeInternalError,
           a0asAdditionalConsoleOutputLines = [
             [
               0x0F07, "This thread was created in thread ",
