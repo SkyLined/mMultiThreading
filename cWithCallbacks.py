@@ -24,6 +24,9 @@ class cWithCallbacks(object):
       oSelf.__dafFireOnceCallbacks_by_sEventName[sEventName] = [];
     fShowDebugOutput("new events: %s" % ", ".join(asEventNames));
   
+  def fAddCallbacks(oSelf, dfCallback_by_sEventName, bFireOnce = False):
+    for (sEventName, fCallback) in dfCallback_by_sEventName.items():
+      oSelf.fAddCallback(sEventName, fCallback, bFireOnce);
   def fAddCallback(oSelf, sEventName, fCallback, bFireOnce = False):
     assert sEventName in oSelf.__dafCallbacks_by_sEventName, \
         "event %s not in list of known events (%s)" % (
