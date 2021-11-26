@@ -115,10 +115,12 @@ class cThread(object):
           a0asAdditionalConsoleOutputLines = [
             [
               0x0F07, "This thread was created in thread ",
-              0x0F0F, "%d/0x%X" % (oSelf.__oCreateCallStack.uThreadId, oSelf.__oCreateCallStack.uThreadId),
+              0x0F0F, "%d/0x%X" % (oSelf.__oCreateCallStack.u0ThreadId, oSelf.__oCreateCallStack.u0ThreadId),
               0x0F07, " (",
-              0x0F0F, oSelf.__oCreateCallStack.sThreadName or "<unnamed>",
+              0x0F0F, oSelf.__oCreateCallStack.s0ThreadName or "<unnamed>",
               0x0F07, ") with the following stack:",
+            ] if oSelf.__oCreateCallStack.u0ThreadId is not None else [
+              0x0F07, "This thread was created in an unknown thread with the following stack:",
             ],
           ] + oSelf.__oCreateCallStack.faasCreateConsoleOutput(bAddHeader = False)
         );
