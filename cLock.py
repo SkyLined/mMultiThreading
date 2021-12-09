@@ -168,7 +168,7 @@ class cLock(cWithCallbacks):
           guErrorNormalColor, " (",
           guErrorHighlightColor, oSelf.__xLastAcquireCallStackOrThreadId.s0ThreadName or "<unnamed>",
           guErrorNormalColor, ")!",
-        ] if __xLastAcquireCallStackOrThreadId.u0ThreadId is not None else [
+        ] if oSelf.__xLastAcquireCallStackOrThreadId.u0ThreadId is not None else [
           guErrorNormalColor, "Currently locked by an unknown thread.",
         ], [
           guErrorNormalColor, "Attempted to be locked by thread: ",
