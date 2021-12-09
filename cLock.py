@@ -76,6 +76,7 @@ class cLock(cWithCallbacks):
   
   @ShowDebugOutput
   def fAcquire(oSelf):
+    mDebugOutput_HideInCallStack = True; # Errors are often easier to read if this function is left out of the stack.
     assert oSelf.__n0DeadlockTimeoutInSeconds is not None, \
         "Cannot acquire a lock without a timeout if no deadlock timeout is provided."
     xCallStackOrThreadId = c0CallStack.foForThisFunctionsCaller() if c0CallStack else threading.current_thread().ident;
@@ -92,10 +93,12 @@ class cLock(cWithCallbacks):
   
   @ShowDebugOutput
   def fbAcquire(oSelf, nTimeoutInSeconds = 0):
+    mDebugOutput_HideInCallStack = True; # Errors are often easier to read if this function is left out of the stack.
     xCallStackOrThreadId = c0CallStack.foForThisFunctionsCaller() if c0CallStack else threading.current_thread().ident;
     return oSelf.__fbAcquire(xCallStackOrThreadId, nTimeoutInSeconds);
   
   def __fbAcquire(oSelf, xCallStackOrThreadId, nTimeoutInSeconds):
+    mDebugOutput_HideInCallStack = True; # Errors are often easier to read if this function is left out of the stack.
     if nTimeoutInSeconds is not None:
       assert isinstance(nTimeoutInSeconds, (int, float)) and nTimeoutInSeconds >=0, \
           "Invalid timeout value %s" % repr(nTimeoutInSeconds);
@@ -216,6 +219,7 @@ class cLock(cWithCallbacks):
   
   @ShowDebugOutput
   def fRelease(oSelf):
+    mDebugOutput_HideInCallStack = True; # Errors are often easier to read if this function is left out of the stack.
     fShowDebugOutput("Unlocking %s..." % oSelf);
     try:
       oSelf.__xLastAcquireCallStackOrThreadId = oSelf.__oQueue.get(False, 0);
@@ -225,6 +229,7 @@ class cLock(cWithCallbacks):
   
   @ShowDebugOutput
   def fbRelease(oSelf):
+    mDebugOutput_HideInCallStack = True; # Errors are often easier to read if this function is left out of the stack.
     fShowDebugOutput("Attempting to unlock %s if locked..." % oSelf);
     try:
       oSelf.__xLastAcquireCallStackOrThreadId = oSelf.__oQueue.get(False, 0);
@@ -267,6 +272,7 @@ class cLock(cWithCallbacks):
   
   @ShowDebugOutput
   def fWait(oSelf):
+    mDebugOutput_HideInCallStack = True; # Errors are often easier to read if this function is left out of the stack.
     # Wait for the lock to be unlocked by trying to lock it. After we locked it, unlock it again.
     oSelf.__oQueuePutLock.put(0, True);
     try:
