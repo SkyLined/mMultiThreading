@@ -1,12 +1,16 @@
 import os, queue, threading, time, threading, traceback;
 
 try: # mDebugOutput use is Optional
-  from mDebugOutput import ShowDebugOutput, fShowDebugOutput, cCallStack as c0CallStack;
+  from mDebugOutput import \
+    ShowDebugOutput, \
+    fShowDebugOutput, \
+    cCallStack as c0CallStack, \
+    fTerminateWithConsoleOutput as f0TerminateWithConsoleOutput;
 except ModuleNotFoundError as oException:
   if oException.args[0] != "No module named 'mDebugOutput'":
     raise;
   ShowDebugOutput = fShowDebugOutput = lambda x: x; # NOP
-  c0CallStack = None;
+  c0CallStack = f0TerminateWithConsoleOutput = None;
 
 from .cWithCallbacks import cWithCallbacks;
 
@@ -183,7 +187,7 @@ class cLock(cWithCallbacks):
       xCallStackOrThreadId
     );
   def __fTerminateWithConsoleOutput(oSelf, sMessage, aasConsoleOutputLines, xCallStackOrThreadId):
-    assert fTerminateWithConsoleOutput, \
+    assert f0TerminateWithConsoleOutput, \
         "\n".join( # Strip all color codes and just output the text:
           [sMessage] + [
             "".join([
@@ -193,7 +197,7 @@ class cLock(cWithCallbacks):
             for asConsoleOutputLine in aasConsoleOutputLines
           ]
         );
-    fTerminateWithConsoleOutput(
+    f0TerminateWithConsoleOutput(
       sMessage,
       aasConsoleOutputLines + (
         [
@@ -218,7 +222,7 @@ class cLock(cWithCallbacks):
     except queue.Empty:
       raise AssertionError("Cannot release lock %s because it is not locked!" % oSelf);
     oSelf.fFireCallbacks("unlocked");
-
+  
   @ShowDebugOutput
   def fbRelease(oSelf):
     fShowDebugOutput("Attempting to unlock %s if locked..." % oSelf);
@@ -230,14 +234,14 @@ class cLock(cWithCallbacks):
     fShowDebugOutput("Unlocked");
     oSelf.fFireCallbacks("unlocked");
     return True;
-
+  
   @ShowDebugOutput
   def fbIsLockedByCurrentThread(oSelf):
     xCallStackOrThreadId = oSelf.__xLastAcquireCallStackOrThreadId;
     return (
       (xCallStackOrThreadId.u0ThreadId if c0CallStack else xCallStackOrThreadId) == threading.currentThread().ident
     ) if xCallStackOrThreadId else False;
-
+  
   @ShowDebugOutput
   def fbWait(oSelf, nTimeoutInSeconds):
     assert isinstance(nTimeoutInSeconds, (int, float)) and nTimeoutInSeconds >= 0, \
