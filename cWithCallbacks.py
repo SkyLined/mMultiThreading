@@ -25,6 +25,7 @@ class cWithCallbacks(object):
     return False;
   
   def fAddEvents(oSelf, *asEventNames):
+    mDebugOutput_HideInCallStack = True; # Errors are often easier to read if this function is left out of the stack.
     # Might be called multiple times by sub-classes.
     if not hasattr(oSelf, "_cWithCallbacks__dafCallbacks_by_sEventName"):
       oSelf.__dafCallbacks_by_sEventName = {};
@@ -37,6 +38,7 @@ class cWithCallbacks(object):
     fShowDebugOutput("new events: %s" % ", ".join(asEventNames));
   
   def fAddCallbacks(oSelf, dfCallback_by_sEventName, bFireOnce = False, bIgnoreMissingEventNames = False):
+    mDebugOutput_HideInCallStack = True; # Errors are often easier to read if this function is left out of the stack.
     for (sEventName, fCallback) in dfCallback_by_sEventName.items():
       oSelf.fAddCallback(sEventName, fCallback, bFireOnce = bFireOnce, bIgnoreMissingEventNames = bIgnoreMissingEventNames);
   def fAddCallback(oSelf, sEventName, fCallback, bFireOnce = False, bIgnoreMissingEventNames = False):
@@ -48,9 +50,11 @@ class cWithCallbacks(object):
       fShowDebugOutput("New callback for %s: %s%s" % (sEventName, repr(fCallback), " (fire once)" if bFireOnce else ""));
   
   def fRemoveCallback(oSelf, sEventName, fCallback, bFireOnce = False, bIgnoreMissingEventNames = False):
+    mDebugOutput_HideInCallStack = True; # Errors are often easier to read if this function is left out of the stack.
     assert fbRemoveCallback(sEventName, fCallback, bFireOnce = bFireOnce, bIgnoreMissingEventNames = bIgnoreMissingEventNames), \
         "%sallback for %s not found: %s" % ("Fire-once c" if bFireOnce else "C", repr(sEventName), repr(fCallback));
   def fbRemoveCallback(oSelf, sEventName, fCallback, bFireOnce = False, bIgnoreMissingEventNames = False):
+    mDebugOutput_HideInCallStack = True; # Errors are often easier to read if this function is left out of the stack.
     # Use "bIgnoreMissingEventNames" with caution: misspelled names may go unnoticed!
     if not oSelf.__fbCheckIsKnownEventName(sEventName, bIgnoreMissingEventNames = bIgnoreMissingEventNames):
       return False;
@@ -66,6 +70,7 @@ class cWithCallbacks(object):
       return True;
   
   def fbFireCallbacks(oSelf, sEventName, *txArguments, **dxArguments):
+    mDebugOutput_HideInCallStack = True; # Errors are often easier to read if this function is left out of the stack.
     oSelf.__fbCheckIsKnownEventName(sEventName);
     atfFireOnceCallbacks = oSelf.__dafFireOnceCallbacks_by_sEventName[sEventName];
     atfCallbacks = oSelf.__dafCallbacks_by_sEventName[sEventName] + atfFireOnceCallbacks;
