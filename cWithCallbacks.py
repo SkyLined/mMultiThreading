@@ -11,7 +11,19 @@ gbFireDebugOutput = False;
 class cWithCallbacks(object):
   def fasGetEventNames(oSelf):
     return list(getattr(oSelf, "_cWithCallbacks__dafCallbacks_by_sEventName", {}).keys());
-    
+  
+  def __fbCheckIsKnownEventName(oSelf, sEventName, bIgnoreMissingEventNames = False):
+    mDebugOutput_HideInCallStack = True; # Errors are often easier to read if this function is left out of the stack.
+    if sEventName in oSelf.__dafCallbacks_by_sEventName:
+      return True;
+    assert bIgnoreMissingEventNames, \
+        "event %s for class %s not in list of known events (%s)" % (
+          repr(sEventName),
+          repr(oSelf.__class__.__name__),
+          ", ".join([repr(sEventName) for sEventName in oSelf.__dafCallbacks_by_sEventName.keys()]),
+        );
+    return False;
+  
   def fAddEvents(oSelf, *asEventNames):
     # Might be called multiple times by sub-classes.
     if not hasattr(oSelf, "_cWithCallbacks__dafCallbacks_by_sEventName"):
@@ -24,49 +36,41 @@ class cWithCallbacks(object):
       oSelf.__dafFireOnceCallbacks_by_sEventName[sEventName] = [];
     fShowDebugOutput("new events: %s" % ", ".join(asEventNames));
   
-  def fAddCallbacks(oSelf, dfCallback_by_sEventName, bFireOnce = False):
+  def fAddCallbacks(oSelf, dfCallback_by_sEventName, bFireOnce = False, bIgnoreMissingEventNames = False):
     for (sEventName, fCallback) in dfCallback_by_sEventName.items():
-      oSelf.fAddCallback(sEventName, fCallback, bFireOnce);
-  def fAddCallback(oSelf, sEventName, fCallback, bFireOnce = False):
-    assert sEventName in oSelf.__dafCallbacks_by_sEventName, \
-        "event %s not in list of known events (%s)" % (
-          repr(sEventName),
-          ", ".join([repr(sEventName) for sEventName in oSelf.__dafCallbacks_by_sEventName.keys()])
-        );
-    dafCallbacks_by_sEventName = oSelf.__dafFireOnceCallbacks_by_sEventName if bFireOnce else oSelf.__dafCallbacks_by_sEventName;
-    dafCallbacks_by_sEventName[sEventName].append(fCallback);
-    fShowDebugOutput("New callback for %s: %s%s" % (sEventName, repr(fCallback), " (fire once)" if bFireOnce else ""));
+      oSelf.fAddCallback(sEventName, fCallback, bFireOnce = bFireOnce, bIgnoreMissingEventNames = bIgnoreMissingEventNames);
+  def fAddCallback(oSelf, sEventName, fCallback, bFireOnce = False, bIgnoreMissingEventNames = False):
+    mDebugOutput_HideInCallStack = True; # Errors are often easier to read if this function is left out of the stack.
+    # Use "bIgnoreMissingEventNames" with caution: misspelled names may go unnoticed!
+    if oSelf.__fbCheckIsKnownEventName(sEventName, bIgnoreMissingEventNames = bIgnoreMissingEventNames):
+      dafCallbacks_by_sEventName = oSelf.__dafFireOnceCallbacks_by_sEventName if bFireOnce else oSelf.__dafCallbacks_by_sEventName;
+      dafCallbacks_by_sEventName[sEventName].append(fCallback);
+      fShowDebugOutput("New callback for %s: %s%s" % (sEventName, repr(fCallback), " (fire once)" if bFireOnce else ""));
   
-  def fbRemoveCallback(oSelf, sEventName, fCallback):
-    assert sEventName in oSelf.__dafCallbacks_by_sEventName, \
-        "event %s not in list of known events (%s)" % (
-          repr(sEventName),
-          ", ".join([repr(sEventName) for sEventName in oSelf.__dafCallbacks_by_sEventName.keys()])
-        );
-    if fCallback in oSelf.__dafCallbacks_by_sEventName:
-      oSelf.__dafCallbacks_by_sEventName.remove(fCallback);
-      fShowDebugOutput("Regular callback for %s removed: %s" % (sEventName, repr(fCallback)));
+  def fRemoveCallback(oSelf, sEventName, fCallback, bFireOnce = False, bIgnoreMissingEventNames = False):
+    assert fbRemoveCallback(sEventName, fCallback, bFireOnce = bFireOnce, bIgnoreMissingEventNames = bIgnoreMissingEventNames), \
+        "%sallback for %s not found: %s" % ("Fire-once c" if bFireOnce else "C", repr(sEventName), repr(fCallback));
+  def fbRemoveCallback(oSelf, sEventName, fCallback, bFireOnce = False, bIgnoreMissingEventNames = False):
+    # Use "bIgnoreMissingEventNames" with caution: misspelled names may go unnoticed!
+    if not oSelf.__fbCheckIsKnownEventName(sEventName, bIgnoreMissingEventNames = bIgnoreMissingEventNames):
+      return False;
+    dafCallbacks_by_sEventName = oSelf.__dafCallbacks_by_sEventName if bFireOnce else oSelf.__dafFireOnceCallbacks_by_sEventName;
+    atfCallbacks = dafCallbacks_by_sEventName[sEventName];
+    try:
+      atfCallbacks.remove(fCallback);
+    except ValueError:
+      fShowDebugOutput("%sallback for %s not found: %s" % ("Fire-once c" if bFireOnce else "C", sEventName, repr(fCallback)));
+      return False;
+    else:
+      fShowDebugOutput("%sallback for %s removed: %s" % ("Fire-once c" if bFireOnce else "C", sEventName, repr(fCallback)));
       return True;
-    if fCallback in oSelf.__dafFireOnceCallbacks_by_sEventName:
-      oSelf.__dafFireOnceCallbacks_by_sEventName.remove(fCallback);
-      fShowDebugOutput("Fire-once callback for %s removed: %s" % (sEventName, repr(fCallback)));
-      return True;
-    fShowDebugOutput("Callback not found");
-    return False;
-  
-  def fRemoveCallback(oSelf, sEventName, fCallback):
-    oSelf.fbRemoveCallback(sEventName, fCallback)
   
   def fbFireCallbacks(oSelf, sEventName, *txArguments, **dxArguments):
-    assert sEventName in oSelf.__dafCallbacks_by_sEventName, \
-        "event %s not in list of known events (%s)" % (
-          repr(sEventName),
-          ", ".join([repr(sEventName) for sEventName in oSelf.__dafCallbacks_by_sEventName.keys()])
-        );
+    oSelf.__fbCheckIsKnownEventName(sEventName);
     atfFireOnceCallbacks = oSelf.__dafFireOnceCallbacks_by_sEventName[sEventName];
     atfCallbacks = oSelf.__dafCallbacks_by_sEventName[sEventName] + atfFireOnceCallbacks;
     if not atfCallbacks:
-      fShowDebugOutput("Fired %s event without callbacks." % sEventName);
+      fShowDebugOutput("Event %s fired without callbacks." % sEventName);
       return False;
     fShowDebugOutput("Firing %s event for %d callbacks." % (sEventName, len(atfCallbacks)));
     if txArguments or dxArguments:
@@ -82,7 +86,6 @@ class cWithCallbacks(object):
       if bFireOnce:
         atfFireOnceCallbacks.remove(fCallback);
     return True;
-
-  def fFireCallbacks(oSelf, sEventName, *txArguments, **dxArguments):
-    oSelf.fbFireCallbacks(sEventName, *txArguments, **dxArguments);
+  
+  fFireCallbacks = fbFireCallbacks; # One may not care about the result
 
