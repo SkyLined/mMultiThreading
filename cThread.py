@@ -101,6 +101,7 @@ class cThread(object):
   
   @ShowDebugOutput
   def __fMainWrapper(oSelf):
+    mDebugOutput_HideInCallStack = True; # Errors are often easier to read if this function is left out of the stack.
     oSelf.__bRunning = True;
     oSelf.__uId = oSelf.__oPythonThread.ident;
     cThread.__oThread_by_uId[oSelf.__uId] = oSelf;
