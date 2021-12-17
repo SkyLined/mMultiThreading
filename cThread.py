@@ -1,14 +1,22 @@
 import threading;
 
 try: # mDebugOutput use is Optional
-  from mDebugOutput import ShowDebugOutput, fShowDebugOutput, cCallStack as c0CallStack, fTerminateWithException as f0TerminateWithException;
+  from mDebugOutput import \
+    ShowDebugOutput, \
+    fShowDebugOutput, \
+    cCallStack as c0CallStack, \
+    fTerminateWithException as f0TerminateWithException, \
+    fTerminateWithConsoleOutput as f0TerminateWithConsoleOutput;
 except ModuleNotFoundError as oException:
   if oException.args[0] != "No module named 'mDebugOutput'":
     raise;
+  import traceback, sys;
   ShowDebugOutput = fShowDebugOutput = lambda x: x; # NOP
   c0CallStack = f0TerminateWithException = None;
 
 from .cLock import cLock;
+
+goOutputLock = threading.Lock();
 
 goThreadCounterLock = threading.Lock();
 guThreadCounter = 0;
@@ -34,6 +42,7 @@ class cThread(object):
   def __init__(oSelf, fMain, *txArguments, **dxArguments):
     oSelf.__fMain = fMain;
     oSelf.__oCreateCallStack = c0CallStack.foForThisFunctionsCaller() if c0CallStack else None;
+    oSelf.__o0StartCallStack = None;
     oSelf.__txArguments = txArguments;
     oSelf.__dxArguments = dxArguments;
     oSelf.__bVital = True;
@@ -76,8 +85,65 @@ class cThread(object):
   def uId(oSelf):
     return oSelf.__uId;
   
+  def __fPrintConsoleOutputLines(oSelf, aaxOutput):
+    for axOutput in aaxOutput:
+      axOutput = axOutput[:]; # Create a copy because we are modifying it.
+      sMessage = "";
+      while axOutput:
+        xOutput = axOutput.pop(0);
+        if isinstance(xOutput, str):
+          sMessage += xOutput;
+        elif isinstance(xOutput, list):
+          axOutput = xOutput + axOutput;
+      print(sMessage);
+  
+  def __faxsGetConsoleOutputLinesForStack(oSelf, sMessage, oStack):
+    return [
+      [
+        0x0F07, sMessage, " thread ",
+        0x0F0F, "%d/0x%X" % (oStack.u0ThreadId, oStack.u0ThreadId),
+        0x0F07, " (",
+        0x0F0F, oStack.s0ThreadName or "<unnamed>",
+        0x0F07, ") with the following stack:",
+      ] if oStack.u0ThreadId is not None else [
+        0x0F07, "This thread was created in an unknown thread with the following stack:",
+      ],
+    ] + oStack.faasCreateConsoleOutput(bAddHeader = False);
+  
   @ShowDebugOutput
   def fStart(oSelf, bVital = None):
+    o0CurrentCallStack = c0CallStack.foForThisFunctionsCaller() if c0CallStack else None;
+    if oSelf.__bStarted:
+      aasStackConsoleOutputLines = (
+        oSelf.__faxsGetConsoleOutputLinesForStack("This thread was created in", oSelf.__o0CreateCallStack)
+             if oSelf.__o0CreateCallStack else []
+      ) + [""] + (
+        oSelf.__faxsGetConsoleOutputLinesForStack("This thread was started in", oSelf.__o0StartCallStack)
+             if oSelf.__o0StartCallStack else []
+      ) + (
+        oSelf.__faxsGetConsoleOutputLinesForStack("This thread was started again in", o0CallStack)
+             if o0CurrentCallStack else []
+      );
+      goOutputLock.acquire();
+      try:
+        if f0TerminateWithConsoleOutput:
+          f0TerminateWithConsoleOutput(
+            sTitle = "This thread was started twice",
+            aasConsoleOutputLines = aasStackConsoleOutputLines,
+            uExitCode = oSelf.uExitCodeInternalError,
+          );
+        print("This thread was started twice:");
+        if aasStackConsoleOutputLines:
+          oSelf.__fPrintConsoleOutputLines(aasStackConsoleOutputLines);
+        else:
+          print("Traceback (most recent call last):");
+          for sLine in traceback.format_list(traceback.extract_stack()):
+            print(sLine);
+      finally:
+        goOutputLock.release();
+        sys.exit(oSelf.uExitCodeInternalError);
+    
+    oSelf.__o0StartCallStack = o0CallStack;
     if bVital is not None:
       oSelf.__bVital = bVital;
     oSelf.__bStarted = True;
@@ -109,23 +175,33 @@ class cThread(object):
     try:
       oSelf.__fMain(*oSelf.__txArguments, **oSelf.__dxArguments);
     except Exception as oException:
-      if f0TerminateWithException:
-        f0TerminateWithException(
-          oException,
-          oSelf.uExitCodeInternalError,
-          a0asAdditionalConsoleOutputLines = [
-            [
-              0x0F07, "This thread was created in thread ",
-              0x0F0F, "%d/0x%X" % (oSelf.__oCreateCallStack.u0ThreadId, oSelf.__oCreateCallStack.u0ThreadId),
-              0x0F07, " (",
-              0x0F0F, oSelf.__oCreateCallStack.s0ThreadName or "<unnamed>",
-              0x0F07, ") with the following stack:",
-            ] if oSelf.__oCreateCallStack.u0ThreadId is not None else [
-              0x0F07, "This thread was created in an unknown thread with the following stack:",
-            ],
-          ] + oSelf.__oCreateCallStack.faasCreateConsoleOutput(bAddHeader = False)
-        );
-      raise;
+      aasStackConsoleOutputLines = (
+        oSelf.__faxsGetConsoleOutputLinesForStack("This thread was created in", oSelf.__o0CreateCallStack)
+             if oSelf.__o0CreateCallStack else []
+      ) + [""] + (
+        oSelf.__faxsGetConsoleOutputLinesForStack("This thread was started in", oSelf.__o0StartCallStack)
+             if oSelf.__o0StartCallStack else []
+      );
+      goOutputLock.acquire();
+      try:
+        if f0TerminateWithException:
+          f0TerminateWithException(
+            oException,
+            oSelf.uExitCodeInternalError,
+            a0asAdditionalConsoleOutputLines = aasStackConsoleOutputLines,
+          );
+        print("Exception in thread:");
+        if aasStackConsoleOutputLines:
+          oSelf.__fPrintConsoleOutputLines(aasStackConsoleOutputLines);
+        else:
+          print("Traceback (most recent call last):");
+          for sLine in traceback.format_list(traceback.extract_stack()):
+            print(sLine);
+        for sLine in traceback.format_exc().split("\n")[1:]:
+          if sLine: print(sLine);
+      finally:
+        goOutputLock.release();
+        sys.exit(oSelf.uExitCodeInternalError);
     oSelf.__bRunning = False;
     oSelf.__bTerminated = True;
     del cThread.__oThread_by_uId[oSelf.__uId];
