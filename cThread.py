@@ -121,7 +121,7 @@ class cThread(object):
         oSelf.__faxsGetConsoleOutputLinesForStack("This thread was started in", oSelf.__o0StartCallStack)
              if oSelf.__o0StartCallStack else []
       ) + (
-        oSelf.__faxsGetConsoleOutputLinesForStack("This thread was started again in", o0CallStack)
+        oSelf.__faxsGetConsoleOutputLinesForStack("This thread was started again in", o0CurrentCallStack)
              if o0CurrentCallStack else []
       );
       goOutputLock.acquire();
@@ -143,7 +143,7 @@ class cThread(object):
         goOutputLock.release();
         sys.exit(oSelf.uExitCodeInternalError);
     
-    oSelf.__o0StartCallStack = o0CallStack;
+    oSelf.__o0StartCallStack = o0CurrentCallStack;
     if bVital is not None:
       oSelf.__bVital = bVital;
     oSelf.__bStarted = True;
