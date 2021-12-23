@@ -90,12 +90,14 @@ class cLock(cWithCallbacks):
       ):
         oSelf.__fTerminateWithSingleThreadDeadlock(xLastAcquireCallStackOrThreadId);
       oSelf.__fTerminateWithMultiThreadDeadlock(xLastAcquireCallStackOrThreadId);
+  fLock = fAcquire;
   
   @ShowDebugOutput
   def fbAcquire(oSelf, nTimeoutInSeconds = 0):
     mDebugOutput_HideInCallStack = True; # Errors are often easier to read if this function is left out of the stack.
     xCallStackOrThreadId = c0CallStack.foForThisFunctionsCaller() if c0CallStack else threading.current_thread().ident;
     return oSelf.__fbAcquire(xCallStackOrThreadId, nTimeoutInSeconds);
+  fbLock = fbAcquire;
   
   def __fbAcquire(oSelf, xCallStackOrThreadId, nTimeoutInSeconds):
     mDebugOutput_HideInCallStack = True; # Errors are often easier to read if this function is left out of the stack.
@@ -226,6 +228,7 @@ class cLock(cWithCallbacks):
     except queue.Empty:
       raise AssertionError("Cannot release lock %s because it is not locked!" % oSelf);
     oSelf.fFireCallbacks("unlocked");
+  fUnlock = fRelease;
   
   @ShowDebugOutput
   def fbRelease(oSelf):
@@ -239,6 +242,7 @@ class cLock(cWithCallbacks):
     fShowDebugOutput("Unlocked");
     oSelf.fFireCallbacks("unlocked");
     return True;
+  fbUnlock = fbRelease;
   
   @ShowDebugOutput
   def fbIsLockedByCurrentThread(oSelf):
