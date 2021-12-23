@@ -1,4 +1,4 @@
-import threading;
+import sys, threading, traceback;
 
 try: # mDebugOutput use is Optional
   from mDebugOutput import \
@@ -10,7 +10,6 @@ try: # mDebugOutput use is Optional
 except ModuleNotFoundError as oException:
   if oException.args[0] != "No module named 'mDebugOutput'":
     raise;
-  import traceback, sys;
   ShowDebugOutput = fShowDebugOutput = lambda x: x; # NOP
   c0CallStack = f0TerminateWithException = None;
 
