@@ -40,7 +40,7 @@ class cThread(object):
   @ShowDebugOutput
   def __init__(oSelf, fMain, *txArguments, **dxArguments):
     oSelf.__fMain = fMain;
-    oSelf.__oCreateCallStack = c0CallStack.foForThisFunctionsCaller() if c0CallStack else None;
+    oSelf.__o0CreateCallStack = c0CallStack.foForThisFunctionsCaller() if c0CallStack else None;
     oSelf.__o0StartCallStack = None;
     oSelf.__txArguments = txArguments;
     oSelf.__dxArguments = dxArguments;
