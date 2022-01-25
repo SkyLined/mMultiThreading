@@ -57,6 +57,7 @@ class cLock(cWithCallbacks):
         oSelf.__oQueue.put(oSelf.__xLastAcquireCallStackOrThreadId);
     else:
       oSelf.__xLastAcquireCallStackOrThreadId = None;
+    oSelf.__xFinalReleaseCallStackOrThreadId = None;
   
   @property
   def bLocked(oSelf):
@@ -120,6 +121,7 @@ class cLock(cWithCallbacks):
           else:
             fShowDebugOutput("Not acquired because already locked.");
           return False;
+        oSelf.__xFinalReleaseCallStackOrThreadId = None;
         oSelf.__xLastAcquireCallStackOrThreadId = xCallStackOrThreadId;
         fShowDebugOutput("Acquired.");
         oSelf.fFireCallbacks("locked");
@@ -132,10 +134,10 @@ class cLock(cWithCallbacks):
   
   def __fTerminateWithSingleThreadDeadlock(oSelf, xCallStackOrThreadId):
     oSelf.__fTerminateWithConsoleOutput(
-      "Attempt to acquire lock twice in a single thread",
+      "Attempt to lock a lock twice in a single thread",
       [
         [
-          guErrorHighlightColor, "Cannot acquire the same lock twice from the same thread!",
+          guErrorHighlightColor, "Cannot lock the same lock twice from the same thread!",
         ], [
           guErrorNormalColor, "Lock: ", guErrorHighlightColor, str(oSelf),
         ], [
@@ -152,14 +154,17 @@ class cLock(cWithCallbacks):
           guErrorNormalColor, "Thread: unkown",
         ],
       ],
-      xCallStackOrThreadId
+      {
+        "Stack at the time the lock was last locked:": oSelf.__xLastAcquireCallStackOrThreadId,
+        "Stack for the call that caused this issue:": xCallStackOrThreadId,
+      },
     );
   def __fTerminateWithMultiThreadDeadlock(oSelf, xCallStackOrThreadId):
     oSelf.__fTerminateWithConsoleOutput(
       "Deadlock detected",
       [
         [
-          guErrorHighlightColor, "Cannot acquire lock within ", guErrorHighlightColor,
+          guErrorHighlightColor, "Cannot lock a lock within ", guErrorHighlightColor,
           "%f" % oSelf.__n0DeadlockTimeoutInSeconds, guErrorNormalColor, " seconds!",
         ], [
           guErrorNormalColor, "Lock: ", guErrorHighlightColor, str(oSelf),
@@ -189,9 +194,12 @@ class cLock(cWithCallbacks):
           guErrorNormalColor, "Attempted to be locked by an unknown thread.",
         ],
       ],
-      xCallStackOrThreadId
+      {
+        "Stack at the time the lock was last locked:": oSelf.__xLastAcquireCallStackOrThreadId,
+        "Stack for the call that caused this issue:": xCallStackOrThreadId,
+      },
     );
-  def __fTerminateWithConsoleOutput(oSelf, sMessage, aasConsoleOutputLines, xCallStackOrThreadId):
+  def __fTerminateWithConsoleOutput(oSelf, sMessage, aasConsoleOutputLines, dxCallStackOrThreadId_by_sHeader):
     assert f0TerminateWithConsoleOutput, \
         "\n".join( # Strip all color codes and just output the text:
           [sMessage] + [
@@ -202,48 +210,85 @@ class cLock(cWithCallbacks):
             for asConsoleOutputLine in aasConsoleOutputLines
           ]
         );
-    f0TerminateWithConsoleOutput(
-      sMessage,
-      aasConsoleOutputLines + (
-        [
-          [],
-          [
-            guErrorNormalColor, "Stack at the time the lock was last acquired:",
-          ]
-        ] + oSelf.__xLastAcquireCallStackOrThreadId.faasCreateConsoleOutput(bAddHeader = False) + [
-          [],
-          [
-            guErrorNormalColor, "Stack when the thread attempted to acquired the lock a second time:",
-          ]
-        ] + xCallStackOrThreadId.faasCreateConsoleOutput(bAddHeader = False)
-      ) if c0CallStack else []
-    );
+    if c0CallStack:
+      for (sHeader, xCallStackOrThreadId) in dxCallStackOrThreadId_by_sHeader.items():
+        if xCallStackOrThreadId:
+          aasConsoleOutputLines += [
+            [],
+            [
+              guErrorNormalColor, sHeader,
+            ]
+          ] + xCallStackOrThreadId.faasCreateConsoleOutput(bAddHeader = False);
+    f0TerminateWithConsoleOutput(sMessage, aasConsoleOutputLines);
   
   @ShowDebugOutput
   def fRelease(oSelf):
     mDebugOutput_HideInCallStack = True; # Errors are often easier to read if this function is left out of the stack.
-    fShowDebugOutput("Unlocking %s..." % oSelf);
     try:
       oSelf.__xLastAcquireCallStackOrThreadId = oSelf.__oQueue.get(False, 0);
     except queue.Empty:
-      raise AssertionError("Cannot release lock %s because it is not locked!" % oSelf);
+      oSelf.__fTerminateWithOverUnlocked(
+        c0CallStack.foForThisFunctionsCaller() if c0CallStack else threading.current_thread().ident
+      );
+    if not oSelf.__oQueue.full():
+      oSelf.__xFinalReleaseCallStackOrThreadId = c0CallStack.foForThisFunctionsCaller() if c0CallStack else threading.current_thread().ident;
     oSelf.fFireCallbacks("unlocked");
   fUnlock = fRelease;
   
   @ShowDebugOutput
   def fbRelease(oSelf):
     mDebugOutput_HideInCallStack = True; # Errors are often easier to read if this function is left out of the stack.
-    fShowDebugOutput("Attempting to unlock %s if locked..." % oSelf);
     try:
       oSelf.__xLastAcquireCallStackOrThreadId = oSelf.__oQueue.get(False, 0);
     except queue.Empty:
-      fShowDebugOutput("Not locked");
       return False;
-    fShowDebugOutput("Unlocked");
+    if not oSelf.__oQueue.full():
+      oSelf.__xFinalReleaseCallStackOrThreadId = c0CallStack.foForThisFunctionsCaller() if c0CallStack else threading.current_thread().ident;
     oSelf.fFireCallbacks("unlocked");
     return True;
   fbUnlock = fbRelease;
   
+  def __fTerminateWithOverUnlocked(oSelf, xCallStackOrThreadId):
+    oSelf.__fTerminateWithConsoleOutput(
+      "Attempt to unlock a lock that is not locked.",
+      [
+        [
+          guErrorHighlightColor, "Cannot unlock a lock that is not locked!",
+        ], [
+          guErrorNormalColor, "Lock: ", guErrorHighlightColor, str(oSelf),
+        ], [
+          guErrorNormalColor, "This lock was never locked.",
+        ] if oSelf.__xFinalReleaseCallStackOrThreadId is None else [
+          guErrorNormalColor, "Already unlocked by thread: ",
+          guErrorHighlightColor, "%d/0x%X" % (oSelf.__xFinalReleaseCallStackOrThreadId, oSelf.__xFinalReleaseCallStackOrThreadId),
+          guErrorNormalColor, "!",
+        ] if c0CallStack is None else [
+          guErrorNormalColor, "Already unlocked by thread: ",
+          guErrorHighlightColor, "%d/0x%X" % (oSelf.__xFinalReleaseCallStackOrThreadId.u0ThreadId, oSelf.__xFinalReleaseCallStackOrThreadId.u0ThreadId),
+          guErrorNormalColor, " (",
+          guErrorHighlightColor, oSelf.__xFinalReleaseCallStackOrThreadId.s0ThreadName or "<unnamed>",
+          guErrorNormalColor, ")!",
+        ] if oSelf.__xFinalReleaseCallStackOrThreadId.u0ThreadId is not None else [
+          guErrorNormalColor, "Already unlocked by an unknown thread.",
+        ], [
+          guErrorNormalColor, "Attempted to be unlocked by thread: ",
+          guErrorHighlightColor, "%d/0x%X" % (xCallStackOrThreadId, xCallStackOrThreadId),
+          guErrorNormalColor, "!",
+        ] if c0CallStack is None else [
+          guErrorNormalColor, "Attempted to be unlocked by thread: ",
+          guErrorHighlightColor, "%d/0x%X" % (xCallStackOrThreadId.u0ThreadId, xCallStackOrThreadId.u0ThreadId),
+          guErrorNormalColor, " (",
+          guErrorHighlightColor, xCallStackOrThreadId.s0ThreadName or "<unnamed>",
+          guErrorNormalColor, ")!",
+        ] if xCallStackOrThreadId.u0ThreadId is not None else [
+          guErrorNormalColor, "Attempted to be locked by an unknown thread.",
+        ],
+      ],
+      {
+        "Stack at the time the lock was last unlocked:": oSelf.__xFinalReleaseCallStackOrThreadId,
+        "Stack for the call that caused this issue:": xCallStackOrThreadId,
+      },
+    );
   @ShowDebugOutput
   def fbIsLockedByCurrentThread(oSelf):
     xCallStackOrThreadId = oSelf.__xLastAcquireCallStackOrThreadId;
@@ -290,22 +335,34 @@ class cLock(cWithCallbacks):
     # approximates the real values.
     uAcquiredCount = oSelf.__oQueue.qsize();
     xCallStackOrThreadId = oSelf.__xLastAcquireCallStackOrThreadId;
-    sLastAcquireCaller = (
+    s0LastAcquireCaller = (
       (
         "%s @ %s in thread %s" % (
-          xCallStackOrThreadId.oTopFrame.sCallDescription, xCallStackOrThreadId.oTopFrame.sLastExecutedCodeLocation,
+          xCallStackOrThreadId.o0TopFrame.sCallDescription, xCallStackOrThreadId.o0TopFrame.sLastExecutedCodeLocation,
           "%d/0x%X (%s)" % (xCallStackOrThreadId.u0ThreadId, xCallStackOrThreadId.u0ThreadId, xCallStackOrThreadId.s0ThreadName) \
               if xCallStackOrThreadId.u0ThreadId is not None else "unknown"
         )
       ) if c0CallStack else (
         "thread %d/0x%X" % (xCallStackOrThreadId, xCallStackOrThreadId)
       )
-    ) if xCallStackOrThreadId else None;
+    ) if xCallStackOrThreadId and xCallStackOrThreadId.o0TopFrame else None;
+    xCallStackOrThreadId = oSelf.__xFinalReleaseCallStackOrThreadId;
+    s0FinalReleaseCaller = (
+      (
+        "%s @ %s in thread %s" % (
+          xCallStackOrThreadId.o0TopFrame.sCallDescription, xCallStackOrThreadId.o0TopFrame.sLastExecutedCodeLocation,
+          "%d/0x%X (%s)" % (xCallStackOrThreadId.u0ThreadId, xCallStackOrThreadId.u0ThreadId, xCallStackOrThreadId.s0ThreadName) \
+              if xCallStackOrThreadId.u0ThreadId is not None else "unknown"
+        )
+      ) if c0CallStack else (
+        "thread %d/0x%X" % (xCallStackOrThreadId, xCallStackOrThreadId)
+      )
+    ) if xCallStackOrThreadId and xCallStackOrThreadId.o0TopFrame else None;
     return [s for s in [
       oSelf.__sDescription,
-      ("locked by %s" % sLastAcquireCaller) if uAcquiredCount == oSelf.__uSize else
-          "unlocked" if uAcquiredCount == 0 else 
-          ("%d/%d (last acquired by %s)" % (uAcquiredCount, oSelf.__uSize, sLastAcquireCaller)),
+      ("locked by %s" % s0LastAcquireCaller) if uAcquiredCount == oSelf.__uSize else
+          ("%d/%d (last locked by %s)" % (uAcquiredCount, oSelf.__uSize, s0LastAcquireCaller)) if uAcquiredCount > 0 else
+          ("unlocked (%s)" % ("by %s" % s0FinalReleaseCaller if s0FinalReleaseCaller else "never locked")),
     ] if s];
   
   def __repr__(oSelf):
