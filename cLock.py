@@ -1,4 +1,4 @@
-import os, queue, threading, time, threading, traceback;
+import os, queue, sys, threading, time, threading, traceback;
 
 try: # mDebugOutput use is Optional
   from mDebugOutput import \
@@ -9,7 +9,8 @@ try: # mDebugOutput use is Optional
 except ModuleNotFoundError as oException:
   if oException.args[0] != "No module named 'mDebugOutput'":
     raise;
-  ShowDebugOutput = fShowDebugOutput = lambda x: x; # NOP
+  ShowDebugOutput = lambda fx: fx; # NOP
+  fShowDebugOutput = lambda x, s0 = None: x; # NOP
   c0CallStack = f0TerminateWithConsoleOutput = None;
 
 from .cWithCallbacks import cWithCallbacks;
@@ -89,8 +90,14 @@ class cLock(cWithCallbacks):
           else xLastAcquireCallStackOrThreadId is xCallStackOrThreadId
         )
       ):
-        oSelf.__fTerminateWithSingleThreadDeadlock(xLastAcquireCallStackOrThreadId);
-      oSelf.__fTerminateWithMultiThreadDeadlock(xLastAcquireCallStackOrThreadId);
+        oSelf.__fTerminateWithSingleThreadDeadlock(
+          xFirstLockStackOrThreadId = oSelf.__xLastAcquireCallStackOrThreadId,
+          xSecondLockStackOrThreadId = xCallStackOrThreadId,
+        );
+      oSelf.__fTerminateWithMultiThreadDeadlock(
+        xFirstLockStackOrThreadId = oSelf.__xLastAcquireCallStackOrThreadId,
+        xSecondLockStackOrThreadId = xCallStackOrThreadId,
+      );
   fLock = fAcquire;
   
   @ShowDebugOutput
@@ -132,7 +139,7 @@ class cLock(cWithCallbacks):
       fShowDebugOutput("Not acquired because busy.");
       return False;
   
-  def __fTerminateWithSingleThreadDeadlock(oSelf, xCallStackOrThreadId):
+  def __fTerminateWithSingleThreadDeadlock(oSelf, xFirstLockStackOrThreadId, xSecondLockStackOrThreadId):
     oSelf.__fTerminateWithConsoleOutput(
       "Attempt to lock a lock twice in a single thread",
       [
@@ -142,24 +149,24 @@ class cLock(cWithCallbacks):
           guErrorNormalColor, "Lock: ", guErrorHighlightColor, str(oSelf),
         ], [
           guErrorNormalColor, "Thread: ",
-          guErrorHighlightColor, "%d/0x%X" % (xCallStackOrThreadId, xCallStackOrThreadId,
+          guErrorHighlightColor, "%d/0x%X" % (xFirstLockStackOrThreadId, xFirstLockStackOrThreadId,
           guErrorNormalColor, "!"),
         ] if c0CallStack is None else [
           guErrorNormalColor, "Thread: ",
-          guErrorHighlightColor, "%d/0x%X" % (xCallStackOrThreadId.u0ThreadId, xCallStackOrThreadId.u0ThreadId),
+          guErrorHighlightColor, "%d/0x%X" % (xFirstLockStackOrThreadId.u0ThreadId, xFirstLockStackOrThreadId.u0ThreadId),
           guErrorNormalColor, " (",
-          guErrorHighlightColor, xCallStackOrThreadId.s0ThreadName or "<unnamed>",
+          guErrorHighlightColor, xFirstLockStackOrThreadId.s0ThreadName or "<unnamed>",
           guErrorNormalColor, ")!",
-        ] if xCallStackOrThreadId.u0ThreadId is not None else [
+        ] if xFirstLockStackOrThreadId.u0ThreadId is not None else [
           guErrorNormalColor, "Thread: unkown",
         ],
       ],
       {
-        "Stack at the time the lock was last locked:": oSelf.__xLastAcquireCallStackOrThreadId,
-        "Stack for the call that caused this issue:": xCallStackOrThreadId,
+        "Stack at the time the lock was last locked:": xFirstLockStackOrThreadId,
+        "Stack for the call that caused this issue:": xSecondLockStackOrThreadId,
       },
     );
-  def __fTerminateWithMultiThreadDeadlock(oSelf, xCallStackOrThreadId):
+  def __fTerminateWithMultiThreadDeadlock(oSelf, xFirstLockStackOrThreadId, xSecondLockStackOrThreadId):
     oSelf.__fTerminateWithConsoleOutput(
       "Deadlock detected",
       [
@@ -170,37 +177,38 @@ class cLock(cWithCallbacks):
           guErrorNormalColor, "Lock: ", guErrorHighlightColor, str(oSelf),
         ], [
           guErrorNormalColor, "Currently locked by thread: ",
-          guErrorHighlightColor, "%d/0x%X" % (oSelf.__xLastAcquireCallStackOrThreadId, oSelf.__xLastAcquireCallStackOrThreadId),
+          guErrorHighlightColor, "%d/0x%X" % (xFirstLockStackOrThreadId, xFirstLockStackOrThreadId),
           guErrorNormalColor, "!",
         ] if c0CallStack is None else [
           guErrorNormalColor, "Currently locked by thread: ",
-          guErrorHighlightColor, "%d/0x%X" % (oSelf.__xLastAcquireCallStackOrThreadId.u0ThreadId, oSelf.__xLastAcquireCallStackOrThreadId.u0ThreadId),
+          guErrorHighlightColor, "%d/0x%X" % (xFirstLockStackOrThreadId.u0ThreadId, xFirstLockStackOrThreadId.u0ThreadId),
           guErrorNormalColor, " (",
-          guErrorHighlightColor, oSelf.__xLastAcquireCallStackOrThreadId.s0ThreadName or "<unnamed>",
+          guErrorHighlightColor, xFirstLockStackOrThreadId.s0ThreadName or "<unnamed>",
           guErrorNormalColor, ")!",
-        ] if oSelf.__xLastAcquireCallStackOrThreadId.u0ThreadId is not None else [
+        ] if xFirstLockStackOrThreadId.u0ThreadId is not None else [
           guErrorNormalColor, "Currently locked by an unknown thread.",
         ], [
           guErrorNormalColor, "Attempted to be locked by thread: ",
-          guErrorHighlightColor, "%d/0x%X" % (xCallStackOrThreadId, xCallStackOrThreadId),
+          guErrorHighlightColor, "%d/0x%X" % (xSecondLockStackOrThreadId, xSecondLockStackOrThreadId),
           guErrorNormalColor, "!",
         ] if c0CallStack is None else [
           guErrorNormalColor, "Attempted to be locked by thread: ",
-          guErrorHighlightColor, "%d/0x%X" % (xCallStackOrThreadId.u0ThreadId, xCallStackOrThreadId.u0ThreadId),
+          guErrorHighlightColor, "%d/0x%X" % (xSecondLockStackOrThreadId.u0ThreadId, xSecondLockStackOrThreadId.u0ThreadId),
           guErrorNormalColor, " (",
-          guErrorHighlightColor, xCallStackOrThreadId.s0ThreadName or "<unnamed>",
+          guErrorHighlightColor, xSecondLockStackOrThreadId.s0ThreadName or "<unnamed>",
           guErrorNormalColor, ")!",
-        ] if xCallStackOrThreadId.u0ThreadId is not None else [
+        ] if xSecondLockStackOrThreadId.u0ThreadId is not None else [
           guErrorNormalColor, "Attempted to be locked by an unknown thread.",
         ],
       ],
       {
-        "Stack at the time the lock was last locked:": oSelf.__xLastAcquireCallStackOrThreadId,
-        "Stack for the call that caused this issue:": xCallStackOrThreadId,
+        "Stack at the time the lock was last locked:": xFirstLockStackOrThreadId,
+        "Stack for the call that caused this issue:": xSecondLockStackOrThreadId,
       },
     );
   def __fTerminateWithConsoleOutput(oSelf, sMessage, aasConsoleOutputLines, dxCallStackOrThreadId_by_sHeader):
-    assert f0TerminateWithConsoleOutput, \
+    if not f0TerminateWithConsoleOutput:
+      print (
         "\n".join( # Strip all color codes and just output the text:
           [sMessage] + [
             "".join([
@@ -209,7 +217,9 @@ class cLock(cWithCallbacks):
             ])
             for asConsoleOutputLine in aasConsoleOutputLines
           ]
-        );
+        )
+      );
+      sys.exit(1);
     if c0CallStack:
       for (sHeader, xCallStackOrThreadId) in dxCallStackOrThreadId_by_sHeader.items():
         if xCallStackOrThreadId:
@@ -334,36 +344,33 @@ class cLock(cWithCallbacks):
     # This is done without a property lock, so race-conditions exist and it
     # approximates the real values.
     uAcquiredCount = oSelf.__oQueue.qsize();
-    xCallStackOrThreadId = oSelf.__xLastAcquireCallStackOrThreadId;
-    s0LastAcquireCaller = (
-      (
+    def fsGetCallerDetails(xCallStackOrThreadId):
+      return (
+        "unknown"
+      ) if xCallStackOrThreadId is None else (
         "%s @ %s in thread %s" % (
           xCallStackOrThreadId.o0TopFrame.sCallDescription, xCallStackOrThreadId.o0TopFrame.sLastExecutedCodeLocation,
           "%d/0x%X (%s)" % (xCallStackOrThreadId.u0ThreadId, xCallStackOrThreadId.u0ThreadId, xCallStackOrThreadId.s0ThreadName) \
               if xCallStackOrThreadId.u0ThreadId is not None else "unknown"
-        )
+        ) if xCallStackOrThreadId.o0TopFrame else None
       ) if c0CallStack else (
         "thread %d/0x%X" % (xCallStackOrThreadId, xCallStackOrThreadId)
-      )
-    ) if xCallStackOrThreadId and xCallStackOrThreadId.o0TopFrame else None;
-    xCallStackOrThreadId = oSelf.__xFinalReleaseCallStackOrThreadId;
-    s0FinalReleaseCaller = (
-      (
-        "%s @ %s in thread %s" % (
-          xCallStackOrThreadId.o0TopFrame.sCallDescription, xCallStackOrThreadId.o0TopFrame.sLastExecutedCodeLocation,
-          "%d/0x%X (%s)" % (xCallStackOrThreadId.u0ThreadId, xCallStackOrThreadId.u0ThreadId, xCallStackOrThreadId.s0ThreadName) \
-              if xCallStackOrThreadId.u0ThreadId is not None else "unknown"
-        )
-      ) if c0CallStack else (
-        "thread %d/0x%X" % (xCallStackOrThreadId, xCallStackOrThreadId)
-      )
-    ) if xCallStackOrThreadId and xCallStackOrThreadId.o0TopFrame else None;
-    return [s for s in [
+      );
+    if uAcquiredCount == 0:
+      if oSelf.__xFinalReleaseCallStackOrThreadId is None:
+        sStateDetails = "never locked";
+      else:
+        sFinalReleaseCaller = fsGetCallerDetails(oSelf.__xFinalReleaseCallStackOrThreadId);
+        sStateDetails = "unlocked by %s" % sFinalReleaseCaller;
+    elif uAcquiredCount == oSelf.__uSize:
+      sLastAcquireCaller = fsGetCallerDetails(oSelf.__xLastAcquireCallStackOrThreadId);
+      sStateDetails = "locked by %s" % sLastAcquireCaller;
+    else:
+      sStateDetails = "unlocked %d/%d" % (uAcquiredCount, oSelf.__uSize);
+    return [
       oSelf.__sDescription,
-      ("locked by %s" % s0LastAcquireCaller) if uAcquiredCount == oSelf.__uSize else
-          ("%d/%d (last locked by %s)" % (uAcquiredCount, oSelf.__uSize, s0LastAcquireCaller)) if uAcquiredCount > 0 else
-          ("unlocked (%s)" % ("by %s" % s0FinalReleaseCaller if s0FinalReleaseCaller else "never locked")),
-    ] if s];
+      sStateDetails,
+    ];
   
   def __repr__(oSelf):
     sModuleName = ".".join(oSelf.__class__.__module__.split(".")[:-1]);
