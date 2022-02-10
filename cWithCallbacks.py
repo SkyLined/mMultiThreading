@@ -3,7 +3,8 @@ try: # mDebugOutput use is Optional
 except ModuleNotFoundError as oException:
   if oException.args[0] != "No module named 'mDebugOutput'":
     raise;
-  ShowDebugOutput = fShowDebugOutput = lambda x: x; # NOP
+  ShowDebugOutput = lambda fx: fx; # NOP
+  fShowDebugOutput = lambda x, s0 = None: x; # NOP
 
 gbDebugOutput = False;
 gbFireDebugOutput = False;
@@ -35,7 +36,7 @@ class cWithCallbacks(object):
           "The event %s appears to be defined twice" % repr(sEventName);
       oSelf.__dafCallbacks_by_sEventName[sEventName] = [];
       oSelf.__dafFireOnceCallbacks_by_sEventName[sEventName] = [];
-    fShowDebugOutput("new events: %s" % ", ".join(asEventNames));
+    fShowDebugOutput(oSelf, "new events: %s" % ", ".join(asEventNames));
   
   def fAddCallbacks(oSelf, dfCallback_by_sEventName, bFireOnce = False, bIgnoreMissingEventNames = False):
     mDebugOutput_HideInCallStack = True; # Errors are often easier to read if this function is left out of the stack.
@@ -47,7 +48,7 @@ class cWithCallbacks(object):
     if oSelf.__fbCheckIsKnownEventName(sEventName, bIgnoreMissingEventNames = bIgnoreMissingEventNames):
       dafCallbacks_by_sEventName = oSelf.__dafFireOnceCallbacks_by_sEventName if bFireOnce else oSelf.__dafCallbacks_by_sEventName;
       dafCallbacks_by_sEventName[sEventName].append(fCallback);
-      fShowDebugOutput("New callback for %s: %s%s" % (sEventName, repr(fCallback), " (fire once)" if bFireOnce else ""));
+      fShowDebugOutput(oSelf, "New callback for %s: %s%s" % (sEventName, repr(fCallback), " (fire once)" if bFireOnce else ""));
   
   def fRemoveCallback(oSelf, sEventName, fCallback, bFireOnce = False, bIgnoreMissingEventNames = False):
     mDebugOutput_HideInCallStack = True; # Errors are often easier to read if this function is left out of the stack.
@@ -63,10 +64,10 @@ class cWithCallbacks(object):
     try:
       atfCallbacks.remove(fCallback);
     except ValueError:
-      fShowDebugOutput("%sallback for %s not found: %s" % ("Fire-once c" if bFireOnce else "C", sEventName, repr(fCallback)));
+      fShowDebugOutput(oSelf, "%sallback for %s not found: %s" % ("Fire-once c" if bFireOnce else "C", sEventName, repr(fCallback)));
       return False;
     else:
-      fShowDebugOutput("%sallback for %s removed: %s" % ("Fire-once c" if bFireOnce else "C", sEventName, repr(fCallback)));
+      fShowDebugOutput(oSelf, "%sallback for %s removed: %s" % ("Fire-once c" if bFireOnce else "C", sEventName, repr(fCallback)));
       return True;
   
   def fbFireCallbacks(oSelf, sEventName, *txArguments, **dxArguments):
@@ -75,18 +76,18 @@ class cWithCallbacks(object):
     atfFireOnceCallbacks = oSelf.__dafFireOnceCallbacks_by_sEventName[sEventName];
     atfCallbacks = oSelf.__dafCallbacks_by_sEventName[sEventName] + atfFireOnceCallbacks;
     if not atfCallbacks:
-      fShowDebugOutput("Event %s fired without callbacks." % sEventName);
+      fShowDebugOutput(oSelf, "Event %s fired without callbacks for %s." % (sEventName, repr(oSelf)));
       return False;
-    fShowDebugOutput("Firing %s event for %d callbacks." % (sEventName, len(atfCallbacks)));
+    fShowDebugOutput(oSelf, "Firing %s event with %d callbacks for %s." % (sEventName, len(atfCallbacks), repr(oSelf)));
     if txArguments or dxArguments:
       asArguments = (
         [repr(xArgument) for xArgument in txArguments] +
         ["%s:%s" % (repr(xKey), repr(xValue)) for (xKey, xValue) in dxArguments.items()]
       );
-      fShowDebugOutput("  Arguments: %s." % ", ".join(asArguments));
+      fShowDebugOutput(oSelf, "  Arguments: %s." % ", ".join(asArguments));
     for fCallback in atfCallbacks:
       bFireOnce = fCallback in atfFireOnceCallbacks;
-      fShowDebugOutput("  -> %s%s" % (repr(fCallback), " (fire once)" if bFireOnce else ""));
+      fShowDebugOutput(oSelf, "  -> %s%s" % (repr(fCallback), " (fire once)" if bFireOnce else ""));
       fCallback(oSelf, *txArguments, **dxArguments);
       if bFireOnce:
         atfFireOnceCallbacks.remove(fCallback);
