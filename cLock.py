@@ -49,7 +49,7 @@ class cLock(cWithCallbacks):
     oSelf.__oQueuePutLock = queue.Queue(1);
     if n0DeadlockTimeoutInSeconds is not None:
       assert isinstance(n0DeadlockTimeoutInSeconds, (int, float)) and n0DeadlockTimeoutInSeconds >=0, \
-          "Invalid timeout value %s" % repr(nTimeoutInSeconds);
+          "Invalid timeout value %s" % repr(n0DeadlockTimeoutInSeconds);
     oSelf.__n0DeadlockTimeoutInSeconds = n0DeadlockTimeoutInSeconds;
     oSelf.fAddEvents("locked", "unlocked");
     if bLocked:
