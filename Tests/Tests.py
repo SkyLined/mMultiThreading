@@ -39,7 +39,35 @@ try:
         pass;
   
   # Tests are yet to be added.
-  pass;
+  from mMultiThreading import cLock;
+  oLock1 = cLock();
+  oLock2 = cLock();
+  assert oLock2.fbAcquire(), \
+      "Cannot acquire lock";
+  assert not oLock2.fbAcquire(), \
+      "Lock acquired twice!?";
+  aoUnlockedLocks = cLock.faoWaitUntilLocksAreUnlocked(
+    aoLocks = [
+      oLock1,
+      oLock2,
+    ],
+    n0TimeoutInSeconds = 0,
+  );
+  assert aoUnlockedLocks == [oLock1], \
+      "Expected [oLock1] got %s" % (repr(aoUnlockedLocks),);
+  assert oLock1.fbAcquire(), \
+      "Cannot acquire lock";
+  assert not oLock1.fbAcquire(), \
+      "Lock acquired twice!?";
+  aoUnlockedLocks = cLock.faoWaitUntilLocksAreUnlocked(
+    aoLocks = [
+      oLock1,
+      oLock2,
+    ],
+    n0TimeoutInSeconds = 0.5,
+  );
+  assert aoUnlockedLocks == [], \
+      "Expected [] got %s" % (repr(aoUnlockedLocks),);
   
 except Exception as oException:
   if m0DebugOutput:

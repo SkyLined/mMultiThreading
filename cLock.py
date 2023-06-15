@@ -308,25 +308,39 @@ class cLock(cWithCallbacks):
   
   @ShowDebugOutput
   def fbWait(oSelf, nTimeoutInSeconds):
+    # Wait for the lock to be unlocked by trying to lock it with a timeout.
+    # If we locked it, unlock it again.
+    # Returns True of the lock was unlocked during the call.
     assert isinstance(nTimeoutInSeconds, (int, float)) and nTimeoutInSeconds >= 0, \
         "Invalid timeout value %s" % repr(nTimeoutInSeconds);
-    # Wait for the lock to be unlocked by trying to lock it with a timeout. If we locked it, unlock it again.
-    # Returns True of the lock was unlocked during the call.
-    fShowDebugOutput("Waiting for %s up to %d seconds..." % (oSelf, nTimeoutInSeconds));
+    nTimeoutInSeconds = max(0, nTimeoutInSeconds);
+    # There are two locks that need to locked. Both need a timeout but the second
+    # timeout will need to be adjusted based on how long locking the first lock takes.
+    # Determine the time at which the timeout happens to recalculate the timeout later:
     nEndTime = time.time() + nTimeoutInSeconds;
+    fShowDebugOutput("Waiting for %s up to %d seconds..." % (oSelf, nTimeoutInSeconds));
+    # Get the oQueuePutLock first using the timeout. Eeturn False if it fails.
     try:
-      oSelf.__oQueuePutLock.put(0, True, nTimeoutInSeconds);
-      try:
-        nRemainingTimeoutInSeconds = nEndTime - time.time();
-        if nRemainingTimeoutInSeconds < 0:
-          fShowDebugOutput("Timeout");
-          return False;
-        oSelf.__oQueue.put(0, True, float(nRemainingTimeoutInSeconds));
-        oSelf.__oQueue.get(False, 0);
-      finally:
-        oSelf.__oQueuePutLock.get(False, 0);
+      if nTimeoutInSeconds == 0:
+        oSelf.__oQueuePutLock.put(0, False);
+      else:
+        oSelf.__oQueuePutLock.put(0, True, float(nTimeoutInSeconds));
     except queue.Full:
       return False;
+    try:
+      # Calculate how much time we have remaining:
+      nRemainingTimeoutInSeconds = max(0, nEndTime - time.time());
+      # Get the lock:
+      try:
+        if nRemainingTimeoutInSeconds == 0:
+          oSelf.__oQueue.put(0, False);
+        else:
+          oSelf.__oQueue.put(0, True, float(nRemainingTimeoutInSeconds));
+      except queue.Full:
+        return False;
+      oSelf.__oQueue.get(False, 0);
+    finally:
+      oSelf.__oQueuePutLock.get(False, 0);
     return True;
   
   @ShowDebugOutput
