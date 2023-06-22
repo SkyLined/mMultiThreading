@@ -40,6 +40,7 @@ class cThread(object):
   
   @ShowDebugOutput
   def __init__(oSelf, fMain, *txArguments, **dxArguments):
+    mDebugOutput_HideInCallStack = True; # Errors are often easier to read if this function is left out of the stack.
     oSelf.__fMain = fMain;
     oSelf.__o0CreateCallStack = c0CallStack.foForThisFunctionsCaller() if c0CallStack else None;
     oSelf.__o0StartCallStack = None;
@@ -112,6 +113,7 @@ class cThread(object):
   
   @ShowDebugOutput
   def fStart(oSelf, bVital = None):
+    mDebugOutput_HideInCallStack = True; # Errors are often easier to read if this function is left out of the stack.
     o0CurrentCallStack = c0CallStack.foForThisFunctionsCaller() if c0CallStack else None;
     if oSelf.__bStarted:
       aasStackConsoleOutputLines = (
