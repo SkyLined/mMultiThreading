@@ -3,7 +3,6 @@ import sys, threading, traceback;
 try: # mDebugOutput use is Optional
   from mDebugOutput import \
     ShowDebugOutput, \
-    fShowDebugOutput, \
     cCallStack as c0CallStack, \
     fTerminateWithException as f0TerminateWithException, \
     fTerminateWithConsoleOutput as f0TerminateWithConsoleOutput;
@@ -118,13 +117,13 @@ class cThread(object):
     if oSelf.__bStarted:
       aasStackConsoleOutputLines = (
         oSelf.__faxsGetConsoleOutputLinesForStack("This thread was created in", oSelf.__o0CreateCallStack)
-             if oSelf.__o0CreateCallStack else []
+            if oSelf.__o0CreateCallStack else []
       ) + [""] + (
         oSelf.__faxsGetConsoleOutputLinesForStack("This thread was started in", oSelf.__o0StartCallStack)
-             if oSelf.__o0StartCallStack else []
+            if oSelf.__o0StartCallStack else []
       ) + (
         oSelf.__faxsGetConsoleOutputLinesForStack("This thread was started again in", o0CurrentCallStack)
-             if o0CurrentCallStack else []
+            if o0CurrentCallStack else []
       );
       goOutputLock.acquire();
       try:
@@ -179,10 +178,10 @@ class cThread(object):
     except Exception as oException:
       aasStackConsoleOutputLines = (
         oSelf.__faxsGetConsoleOutputLinesForStack("This thread was created in", oSelf.__o0CreateCallStack)
-             if oSelf.__o0CreateCallStack else []
+            if oSelf.__o0CreateCallStack else []
       ) + [""] + (
         oSelf.__faxsGetConsoleOutputLinesForStack("This thread was started in", oSelf.__o0StartCallStack)
-             if oSelf.__o0StartCallStack else []
+            if oSelf.__o0StartCallStack else []
       );
       goOutputLock.acquire();
       try:
