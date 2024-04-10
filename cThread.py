@@ -35,7 +35,7 @@ class cThread(object):
   
   @staticmethod
   def foGetCurrent():
-    return cThread.__oThread_by_uId.get(threading.currentThread().ident);
+    return cThread.__oThread_by_uId.get(threading.current_thread().ident);
   
   @ShowDebugOutput
   def __init__(oSelf, fMain, *txArguments, **dxArguments):
