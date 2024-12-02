@@ -141,6 +141,7 @@ class cThread(object):
           for sLine in traceback.format_list(traceback.extract_stack()):
             print(sLine);
       finally:
+        print("Exiting after internal error in cThread.fStart (__fMain = %s)" % repr(oSelf.__fMain));
         goOutputLock.release();
         sys.exit(oSelf.uExitCodeInternalError);
     
@@ -201,6 +202,7 @@ class cThread(object):
         for sLine in traceback.format_exc().split("\n")[1:]:
           if sLine: print(sLine);
       finally:
+        print("Exiting after internal error in cThread.__fMain (%s)" % repr(oSelf.__fMain));
         goOutputLock.release();
         sys.exit(oSelf.uExitCodeInternalError);
     oSelf.__bRunning = False;
