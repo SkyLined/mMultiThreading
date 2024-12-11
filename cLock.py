@@ -124,7 +124,7 @@ class cLock(cWithCallbacks):
           oSelf.__oQueue.put(oSelf.__xLastAcquireCallStackOrThreadId, nRemainingTimeoutInSeconds > 0, nRemainingTimeoutInSeconds);
         except queue.Full:
           if nTimeoutInSeconds > 0:
-            fShowDebugOutput("Not acquired becuase waiting for locked to become unlocked timed out.");
+            fShowDebugOutput("Not acquired because waiting for locked to become unlocked timed out.");
           else:
             fShowDebugOutput("Not acquired because already locked.");
           return False;
